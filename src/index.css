@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+:root {
+    --fondo: #f1f5f9;
+    --superficie: #fff;
+    --texto: #0f172a;
+    --secundario: #475569;
+    --borde: #cbd5e1;
+    --principal: #1d4ed8;
+    --boton: #2563eb;
+    --boton-texto: #fff;
+    --lateral: #0f172a;
+    --lateral-texto: #e2e8f0;
+    --lateral-activo: #2563eb;
+    --lateral-hover: #1e293b;
+    --lateral-activo-texto: #ffffff;
+}
+
+:root[data-tema="oscuro"] {
+    --fondo: #111827;
+    --superficie: #1f2937;
+    --texto: #f9fafb;
+    --secundario: #cbd5e1;
+    --borde: #4b5563;
+    --principal: #93c5fd;
+    --boton: #2563eb;
+    --boton-texto: #fff;
+    --lateral: #080f1d;
+    --lateral-texto: #e2e8f0;
+    --lateral-activo: #1d4ed8;
+    --lateral-hover: #273449;
+    --lateral-activo-texto: #ffffff
+
+}
+
+:root[data-tema="confort"] {
+    --fondo: #f4f0e5;
+    --superficie: #fffcf4;
+    --texto: #443b2d;
+    --secundario: #625744;
+    --borde: #c8bca7;
+    --principal: #665332;
+    --boton: #665332;
+    --boton-texto: #fff;
+    --lateral: #e6dcc9;
+    --lateral-texto: #443b2d;
+    --lateral-activo: #665332;
+    --lateral-hover: #d7c9b1;
+    --lateral-activo-texto: #ffffff
+}
+
+body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto)
+}
+
+.fondo-app {
+    background: var(--fondo);
+    color: var(--texto)
+}
+
+.superficie-app {
+    background: var(--superficie);
+    color: var(--texto);
+    border: 1px solid var(--borde)
+}
+
+.titulo-app {
+    color: var(--principal)
+}
+
+.texto-secundario {
+    color: var(--secundario)
+}
+
+.campo-app {
+    width: 100%;
+    background: var(--superficie);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 14px 16px
+}
+
+.campo-app::placeholder {
+    color: var(--secundario);
+    opacity: .8
+}
+
+.campo-app:focus-visible,
+.boton-app:focus-visible {
+    outline: 2px solid var(--principal);
+    outline-offset: 3px
+}
+
+.boton-app {
+    background: var(--boton);
+    color: var(--boton-texto);
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter .2s
+}
+
+.boton-app:hover {
+    filter: brightness(1.12)
+}
+
+.lateral-app {
+    background: var(--lateral);
+    color: var(--lateral-texto)
+}
+
+.lateral-link {
+    color: var(--lateral-texto)
+}
+
+.lateral-link:hover {
+    background: var(--lateral-hover)
+}
+
+.lateral-link-activo {
+    background: var(--lateral-activo);
+    color: var(--lateral-activo-texto);
+}
+
+.lateral-divisor {
+    border-color: var(--borde)
+}
+
+.lateral-opcion {
+    background: var(--lateral-hover);
+    color: var(--lateral-texto);
+    border: 1px solid var(--borde)
+}
+
+.lateral-opcion-activa {
+    background: var(--lateral-activo);
+    color: var(--lateral-activo-texto);
+    border: 1px solid transparent;
+}
