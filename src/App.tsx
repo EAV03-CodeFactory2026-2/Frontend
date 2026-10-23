@@ -14,8 +14,6 @@ import Registro from "./pages/Registro";
 
 import Cliente from "./pages/dashboards/DashboardCliente";
 import Propietario from "./pages/dashboards/DashboardPropietario";
-
-// CORREGIDO: utilizar el panel actualizado del proveedor.
 import Proveedor from "./pages/Proveedor";
 
 import Negocios from "./pages/Negocios";
@@ -27,6 +25,9 @@ import HorarioProveedor from "./pages/HorarioProveedor";
 import MisServiciosProveedor from "./pages/MisServiciosProveedor";
 import ExplorarServiciosCliente from "./pages/ExplorarServiciosCliente";
 import PerfilCliente from "./pages/PerfilCliente";
+
+// Nueva pantalla para consultar y agregar roles
+import MiCuenta from "./pages/MiCuenta";
 
 function InicioPublico() {
   const sesion = obtenerSesion();
@@ -57,7 +58,6 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-tema", tema);
-
     localStorage.setItem("tema-reservaflow", tema);
   }, [tema]);
 
@@ -88,7 +88,18 @@ export default function App() {
                 </AccesoPublico>
               }
             />
-            
+
+            {/* MI CUENTA - DISPONIBLE PARA TODOS LOS ROLES */}
+            <Route
+              element={
+                <RutaProtegida
+                  rolesPermitidos={["Cliente", "Propietario", "Proveedor"]}
+                />
+              }
+            >
+              <Route path="/mi-cuenta" element={<MiCuenta />} />
+            </Route>
+
             {/* CLIENTE */}
             <Route element={<RutaProtegida rolesPermitidos={["Cliente"]} />}>
               <Route path="/cliente" element={<Cliente />} />
@@ -116,7 +127,6 @@ export default function App() {
                 element={<AsignacionProveedores />}
               />
 
-              {/* Gestión administrativa de servicios */}
               <Route path="/servicios" element={<Servicios />} />
             </Route>
 

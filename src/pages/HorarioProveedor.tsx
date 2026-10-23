@@ -1,7 +1,26 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, Plus, Trash2, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  CalendarClock,
+  Plus,
+  Trash2,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+import { api, type DiaHorarioApi } from "../services/api";
+import { obtenerSesion } from "../services/auth";
 import { proveedoresDemo } from "../mocks/asignacionesDemo";
-import { CLAVE_PROVEEDOR_DEMO, obtenerProveedorDemoId, obtenerNombreProveedorDemo, leerHorarioProveedorDemo, guardarHorarioProveedorDemo, leerHorarioAnterior, horarioVacio, type DiaHorario, type BloqueHorario } from "../mocks/horariosDemo";
+import {
+  CLAVE_PROVEEDOR_DEMO,
+  obtenerProveedorDemoId,
+  obtenerNombreProveedorDemo,
+  leerHorarioProveedorDemo,
+  guardarHorarioProveedorDemo,
+  leerHorarioAnterior,
+  horarioVacio,
+  type DiaHorario,
+  type BloqueHorario,
+} from "../mocks/horariosDemo";
 
 const MODO_DEMO = import.meta.env.VITE_MODO_DEMO === "true";
 const horarioInicial = horarioVacio;
@@ -46,6 +65,39 @@ function validarHorario(dias: DiaHorario[]): string | null {
   return null;
 }
 
+const nombresDias: Record<string, string> = {
+  Lunes: "LUNES",
+  Martes: "MARTES",
+  Miércoles: "MIERCOLES",
+  Jueves: "JUEVES",
+  Viernes: "VIERNES",
+  Sábado: "SABADO",
+  Domingo: "DOMINGO",
+};
+
+function prepararHorarioApi(dias: DiaHorario[]): DiaHorarioApi[] {
+  return dias.map((dia) => ({
+    dia: nombresDias[dia.dia] ?? dia.dia.toUpperCase(),
+    activo: dia.activo,
+    bloques: dia.activo
+      ? dia.bloques.map((b) => ({ horaInicio: b.inicio, horaFin: b.fin }))
+      : [],
+  }));
+}
+
+function convertirHorarioApi(diasApi: DiaHorarioApi[]): DiaHorario[] {
+  return horarioVacio().map((dia) => {
+    const codigo = nombresDias[dia.dia] ?? dia.dia.toUpperCase();
+    const encontrado = diasApi.find((d) => d.dia === codigo);
+    if (!encontrado) return dia;
+    const bloques = (encontrado.bloques ?? []).map((b) => ({
+      inicio: b.horaInicio.slice(0, 5),
+      fin: b.horaFin.slice(0, 5),
+    }));
+    return { ...dia, activo: encontrado.activo ?? bloques.length > 0, bloques };
+  });
+}
+
 export default function HorarioProveedor() {
   const [proveedorId, setProveedorId] = useState(obtenerProveedorDemoId);
   const [dias, setDias] = useState<DiaHorario[]>(horarioInicial);
@@ -53,7 +105,10 @@ export default function HorarioProveedor() {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [horarioGuardado, setHorarioGuardado] = useState<DiaHorario[] | null>(null);
+  const [cargando, setCargando] = useState(!MODO_DEMO);
+  const [horarioGuardado, setHorarioGuardado] = useState<DiaHorario[] | null>(
+    null,
+  );
 
   useEffect(() => {
     if (MODO_DEMO) {
@@ -63,7 +118,44 @@ export default function HorarioProveedor() {
       setHayHorarioAnterior(Boolean(leerHorarioAnterior()));
       setMensaje("");
       setError("");
+      return;
     }
+
+    let cancelado = false;
+    const sesion = obtenerSesion();
+    if (!sesion || sesion.rol !== "Proveedor") {
+      setError(
+        "Debes iniciar sesión con el rol Proveedor para consultar tu horario.",
+      );
+      setCargando(false);
+      return;
+    }
+
+    setCargando(true);
+    setError("");
+    void api
+      .obtenerMiHorario(sesion.token)
+      .then((respuesta) => {
+        if (cancelado) return;
+        const horario = convertirHorarioApi(respuesta.dias ?? []);
+        setDias(horario);
+        setHorarioGuardado(horario);
+      })
+      .catch((e: unknown) => {
+        if (!cancelado)
+          setError(
+            e instanceof Error
+              ? e.message
+              : "No fue posible consultar el horario.",
+          );
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, [proveedorId]);
 
   function cambiarProveedor(id: number) {
@@ -76,11 +168,15 @@ export default function HorarioProveedor() {
     if (!anterior) return;
     setDias(anterior);
     setError("");
-    setMensaje("Horario anterior cargado para revisión. Presiona Guardar horario para asociarlo al proveedor seleccionado.");
+    setMensaje(
+      "Horario anterior cargado para revisión. Presiona Guardar horario para asociarlo al proveedor seleccionado.",
+    );
   }
 
   function actualizarDia(indice: number, cambio: Partial<DiaHorario>) {
-    setDias((actual) => actual.map((dia, i) => i === indice ? { ...dia, ...cambio } : dia));
+    setDias((actual) =>
+      actual.map((dia, i) => (i === indice ? { ...dia, ...cambio } : dia)),
+    );
     setMensaje("");
     setError("");
   }
@@ -89,13 +185,19 @@ export default function HorarioProveedor() {
     const dia = dias[indice];
     actualizarDia(indice, {
       activo,
-      bloques: activo && dia.bloques.length === 0
-        ? [{ inicio: "08:00", fin: "12:00" }]
-        : dia.bloques,
+      bloques:
+        activo && dia.bloques.length === 0
+          ? [{ inicio: "08:00", fin: "12:00" }]
+          : dia.bloques,
     });
   }
 
-  function cambiarBloque(indiceDia: number, indiceBloque: number, campo: keyof Bloque, valor: string) {
+  function cambiarBloque(
+    indiceDia: number,
+    indiceBloque: number,
+    campo: keyof Bloque,
+    valor: string,
+  ) {
     const bloques = dias[indiceDia].bloques.map((b, i) =>
       i === indiceBloque ? { ...b, [campo]: valor } : b,
     );
@@ -125,19 +227,39 @@ export default function HorarioProveedor() {
     }
     setGuardando(true);
     try {
-      if (!MODO_DEMO) {
-        throw new Error("La conexión con el horario del backend está pendiente de verificar. Activa el modo demostración para probar esta pantalla.");
-      }
       const completos = dias.map((dia) => ({
         ...dia,
         bloques: dia.activo ? [...dia.bloques] : [],
       }));
-      guardarHorarioProveedorDemo(proveedorId, completos);
-      setDias(completos);
-      setHorarioGuardado(completos);
-      setMensaje("Horario semanal guardado correctamente en modo demostración.");
+      if (MODO_DEMO) {
+        guardarHorarioProveedorDemo(proveedorId, completos);
+        setDias(completos);
+        setHorarioGuardado(completos);
+        setMensaje(
+          "Horario semanal guardado correctamente en modo demostración.",
+        );
+      } else {
+        const sesion = obtenerSesion();
+        if (!sesion || sesion.rol !== "Proveedor") {
+          throw new Error(
+            "Debes iniciar sesión con el rol Proveedor para guardar tu horario.",
+          );
+        }
+        const respuesta = await api.guardarMiHorario(
+          prepararHorarioApi(completos),
+          sesion.token,
+        );
+        const actualizado = convertirHorarioApi(
+          respuesta.dias ?? prepararHorarioApi(completos),
+        );
+        setDias(actualizado);
+        setHorarioGuardado(actualizado);
+        setMensaje("Horario semanal guardado correctamente en Masters.");
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No fue posible guardar el horario.");
+      setError(
+        e instanceof Error ? e.message : "No fue posible guardar el horario.",
+      );
     } finally {
       setGuardando(false);
     }
@@ -150,22 +272,52 @@ export default function HorarioProveedor() {
           <div className="superficie-app mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm">
             <CalendarClock size={30} className="titulo-app" />
           </div>
-          <h1 className="titulo-app text-3xl font-bold">Mi horario de atención</h1>
-          <p className="texto-secundario mt-3">Configura los días y las franjas horarias en las que puedes atender.</p>
+          <h1 className="titulo-app text-3xl font-bold">
+            Mi horario de atención
+          </h1>
+          <p className="texto-secundario mt-3">
+            Configura los días y las franjas horarias en las que puedes atender.
+          </p>
         </header>
 
         {MODO_DEMO && (
           <div className="superficie-app mb-6 rounded-2xl p-6 shadow-sm">
-            <label htmlFor="proveedor-horario-demo" className="mb-2 block font-semibold">Proveedor de demostración</label>
-            <select id="proveedor-horario-demo" className="campo-app w-full" value={proveedorId}
-              onChange={(e) => cambiarProveedor(Number(e.target.value))}>
-              {proveedoresDemo.map(p => <option key={p.idProveedor} value={p.idProveedor}>{p.nombre} {p.apellido} — {p.especialidad}</option>)}
+            <label
+              htmlFor="proveedor-horario-demo"
+              className="mb-2 block font-semibold"
+            >
+              Proveedor de demostración
+            </label>
+            <select
+              id="proveedor-horario-demo"
+              className="campo-app w-full"
+              value={proveedorId}
+              onChange={(e) => cambiarProveedor(Number(e.target.value))}
+            >
+              {proveedoresDemo.map((p) => (
+                <option key={p.idProveedor} value={p.idProveedor}>
+                  {p.nombre} {p.apellido} — {p.especialidad}
+                </option>
+              ))}
             </select>
-            <p className="texto-secundario mt-2 text-sm">Estás editando el horario de {obtenerNombreProveedorDemo(proveedorId)}. Cada proveedor tiene su propio horario de prueba.</p>
+            <p className="texto-secundario mt-2 text-sm">
+              Estás editando el horario de{" "}
+              {obtenerNombreProveedorDemo(proveedorId)}. Cada proveedor tiene su
+              propio horario de prueba.
+            </p>
             {hayHorarioAnterior && !leerHorarioProveedorDemo(proveedorId) && (
               <div className="mt-4 rounded-xl border p-3">
-                <p className="texto-secundario text-sm">Existe un horario guardado anteriormente sin identificar al proveedor. No se asignará automáticamente a nadie.</p>
-                <button type="button" className="campo-app !w-auto mt-3" onClick={recuperarHorarioAnterior}>Cargar horario anterior para este proveedor</button>
+                <p className="texto-secundario text-sm">
+                  Existe un horario guardado anteriormente sin identificar al
+                  proveedor. No se asignará automáticamente a nadie.
+                </p>
+                <button
+                  type="button"
+                  className="campo-app !w-auto mt-3"
+                  onClick={recuperarHorarioAnterior}
+                >
+                  Cargar horario anterior para este proveedor
+                </button>
               </div>
             )}
           </div>
@@ -174,10 +326,16 @@ export default function HorarioProveedor() {
           <div className="mb-6">
             <h2 className="text-2xl font-semibold">Horario semanal</h2>
             <p className="texto-secundario mt-2 text-sm">
-              Activa al menos un día. Puedes agregar entre uno y cuatro bloques de 15 minutos por día, sin superposiciones.
+              Activa al menos un día. Puedes agregar entre uno y cuatro bloques
+              de 15 minutos por día, sin superposiciones.
             </p>
           </div>
 
+          {cargando && (
+            <p role="status" className="texto-secundario mb-4">
+              Cargando horario desde Masters...
+            </p>
+          )}
           <div className="space-y-4">
             {dias.map((dia, indiceDia) => (
               <div key={dia.dia} className="rounded-xl border p-4 md:p-5">
@@ -191,34 +349,71 @@ export default function HorarioProveedor() {
                     {dia.dia}
                   </label>
                   <span className="texto-secundario text-sm">
-                    {dia.activo ? `${dia.bloques.length} bloque(s)` : "Sin atención"}
+                    {dia.activo
+                      ? `${dia.bloques.length} bloque(s)`
+                      : "Sin atención"}
                   </span>
                 </div>
 
                 {dia.activo && (
                   <div className="mt-4 space-y-3">
                     {dia.bloques.map((bloque, indiceBloque) => (
-                      <div key={indiceBloque} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                      <div
+                        key={indiceBloque}
+                        className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]"
+                      >
                         <div>
-                          <label className="mb-1 block text-sm" htmlFor={`inicio-${indiceDia}-${indiceBloque}`}>Hora de inicio</label>
+                          <label
+                            className="mb-1 block text-sm"
+                            htmlFor={`inicio-${indiceDia}-${indiceBloque}`}
+                          >
+                            Hora de inicio
+                          </label>
                           <select
                             id={`inicio-${indiceDia}-${indiceBloque}`}
                             className="campo-app w-full"
                             value={bloque.inicio}
-                            onChange={(e) => cambiarBloque(indiceDia, indiceBloque, "inicio", e.target.value)}
+                            onChange={(e) =>
+                              cambiarBloque(
+                                indiceDia,
+                                indiceBloque,
+                                "inicio",
+                                e.target.value,
+                              )
+                            }
                           >
-                            {opcionesHora.slice(0, -1).map((hora) => <option key={hora} value={hora}>{hora}</option>)}
+                            {opcionesHora.slice(0, -1).map((hora) => (
+                              <option key={hora} value={hora}>
+                                {hora}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm" htmlFor={`fin-${indiceDia}-${indiceBloque}`}>Hora de fin</label>
+                          <label
+                            className="mb-1 block text-sm"
+                            htmlFor={`fin-${indiceDia}-${indiceBloque}`}
+                          >
+                            Hora de fin
+                          </label>
                           <select
                             id={`fin-${indiceDia}-${indiceBloque}`}
                             className="campo-app w-full"
                             value={bloque.fin}
-                            onChange={(e) => cambiarBloque(indiceDia, indiceBloque, "fin", e.target.value)}
+                            onChange={(e) =>
+                              cambiarBloque(
+                                indiceDia,
+                                indiceBloque,
+                                "fin",
+                                e.target.value,
+                              )
+                            }
                           >
-                            {opcionesHora.slice(1).map((hora) => <option key={hora} value={hora}>{hora}</option>)}
+                            {opcionesHora.slice(1).map((hora) => (
+                              <option key={hora} value={hora}>
+                                {hora}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <button
@@ -226,9 +421,12 @@ export default function HorarioProveedor() {
                           aria-label={`Eliminar bloque ${indiceBloque + 1} de ${dia.dia}`}
                           title="Eliminar bloque"
                           className="campo-app !w-auto inline-flex items-center justify-center gap-2"
-                          onClick={() => eliminarBloque(indiceDia, indiceBloque)}
+                          onClick={() =>
+                            eliminarBloque(indiceDia, indiceBloque)
+                          }
                         >
-                          <Trash2 size={18} /> <span className="sm:hidden">Eliminar bloque</span>
+                          <Trash2 size={18} />{" "}
+                          <span className="sm:hidden">Eliminar bloque</span>
                         </button>
                       </div>
                     ))}
@@ -247,12 +445,18 @@ export default function HorarioProveedor() {
           </div>
 
           {error && (
-            <p role="alert" className="mt-6 flex items-start gap-2 text-red-500">
+            <p
+              role="alert"
+              className="mt-6 flex items-start gap-2 text-red-500"
+            >
               <AlertCircle size={20} className="shrink-0" /> {error}
             </p>
           )}
           {mensaje && (
-            <p role="status" className="mt-6 flex items-start gap-2 text-green-600">
+            <p
+              role="status"
+              className="mt-6 flex items-start gap-2 text-green-600"
+            >
               <CheckCircle2 size={20} className="shrink-0" /> {mensaje}
             </p>
           )}
@@ -261,33 +465,60 @@ export default function HorarioProveedor() {
             <button
               type="button"
               className="boton-app !w-auto inline-flex items-center gap-2 px-6 py-3 disabled:opacity-50"
-              disabled={guardando}
+              disabled={
+                guardando ||
+                cargando ||
+                (!MODO_DEMO &&
+                  (!obtenerSesion() || obtenerSesion()?.rol !== "Proveedor"))
+              }
               onClick={() => void guardar()}
             >
-              <Save size={19} /> {guardando ? "Guardando..." : "Guardar horario"}
+              <Save size={19} />{" "}
+              {guardando ? "Guardando..." : "Guardar horario"}
             </button>
           </div>
         </div>
-        {MODO_DEMO && (
+        {horarioGuardado && (
           <section className="superficie-app mt-6 rounded-2xl p-6 shadow-sm md:p-8">
             <h2 className="flex items-center gap-2 text-2xl font-semibold">
-              <CalendarClock size={24} className="titulo-app" /> Resumen del horario guardado
+              <CalendarClock size={24} className="titulo-app" /> Resumen del
+              horario guardado
             </h2>
             <p className="texto-secundario mt-2 mb-5 text-sm">
-              Horario registrado para {obtenerNombreProveedorDemo(proveedorId)}. Esta tabla refleja únicamente los cambios guardados.
+              {MODO_DEMO
+                ? `Horario registrado para ${obtenerNombreProveedorDemo(proveedorId)}.`
+                : "Horario del proveedor autenticado."}{" "}
+              Esta tabla refleja únicamente los cambios guardados.
             </p>
             {!horarioGuardado ? (
-              <p className="texto-secundario rounded-xl border p-5">Todavía no has guardado un horario para este proveedor.</p>
+              <p className="texto-secundario rounded-xl border p-5">
+                Todavía no has guardado un horario para este proveedor.
+              </p>
             ) : (
               <div className="overflow-x-auto rounded-xl border">
                 <table className="w-full text-left text-sm">
-                  <thead><tr className="border-b"><th className="px-4 py-3">Día</th><th className="px-4 py-3">Horario de atención</th></tr></thead>
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-3">Día</th>
+                      <th className="px-4 py-3">Horario de atención</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {horarioGuardado.map((dia) => (
                       <tr key={dia.dia} className="border-b last:border-b-0">
-                        <th scope="row" className="px-4 py-3 font-medium">{dia.dia}</th>
+                        <th scope="row" className="px-4 py-3 font-medium">
+                          {dia.dia}
+                        </th>
                         <td className="px-4 py-3">
-                          {dia.activo && dia.bloques.length ? dia.bloques.map(b => `${b.inicio} – ${b.fin}`).join(" | ") : <span className="texto-secundario">Sin atención</span>}
+                          {dia.activo && dia.bloques.length ? (
+                            dia.bloques
+                              .map((b) => `${b.inicio} – ${b.fin}`)
+                              .join(" | ")
+                          ) : (
+                            <span className="texto-secundario">
+                              Sin atención
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -297,7 +528,9 @@ export default function HorarioProveedor() {
             )}
           </section>
         )}
-        <p className="texto-secundario mt-8 text-center text-sm">ReservaFlow · Plataforma de gestión de reservas</p>
+        <p className="texto-secundario mt-8 text-center text-sm">
+          ReservaFlow · Plataforma de gestión de reservas
+        </p>
       </div>
     </section>
   );

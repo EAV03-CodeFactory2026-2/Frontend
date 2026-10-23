@@ -1,4 +1,3 @@
-// Contratos de WebAuth, Masters y Business; validar con el backend al integrar.
 import { solicitudApi } from "./http";
 
 export type Negocio = {
@@ -9,6 +8,7 @@ export type Negocio = {
   identificacionFiscal: string;
   monedaCodigoIso: string;
 };
+
 export type Servicio = {
   idServicio?: number;
   negocioId: number;
@@ -18,8 +18,17 @@ export type Servicio = {
   duracionMinutos: number;
   precio: number;
 };
-export type Moneda = { monedaCodigoIso: string; nombreMoneda: string };
-export type Modalidad = { idModalidad: number; nombreModalidad: string };
+
+export type Moneda = {
+  monedaCodigoIso: string;
+  nombreMoneda: string;
+};
+
+export type Modalidad = {
+  idModalidad: number;
+  nombreModalidad: string;
+};
+
 export type RegistroUsuario = {
   rol: string;
   correo: string;
@@ -31,78 +40,6 @@ export type RegistroUsuario = {
   numeroDocumento: string;
   especialidad?: string;
   descripcionProfesional?: string;
-};
-
-export const api = {
-  login: (correo: string, contrasena: string) =>
-    solicitudApi<{ token: string; mensaje: string }>("AUTH", "/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ correo, contrasena }),
-    }),
-  registrar: (payload: RegistroUsuario) =>
-    solicitudApi<unknown>("MASTERS", "/api/v1/usuarios/registro", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  monedas: () => solicitudApi<Moneda[]>("MASTERS", "/api/v1/monedas"),
-  modalidades: () => solicitudApi<Modalidad[]>("MASTERS", "/api/v1/modalidades"),
-  negocios: (token: string) =>
-    solicitudApi<Negocio[]>("BUSINESS", "/api/v1/negocios", {}, token),
-  crearNegocio: (payload: Omit<Negocio, "idNegocio">, token: string) =>
-    solicitudApi<unknown>(
-      "BUSINESS", "/api/v1/negocios",
-      { method: "POST", body: JSON.stringify(payload) },
-      token,
-    ),
-  serviciosPorNegocio: (id: number, token: string) =>
-    solicitudApi<Servicio[]>(
-      "BUSINESS", `/api/v1/servicios/negocio/${id}`,
-      {},
-      token,
-    ),
-  crearServicio: (payload: Omit<Servicio, "idServicio">, token: string) =>
-    solicitudApi<unknown>(
-      "BUSINESS", "/api/v1/servicios",
-      { method: "POST", body: JSON.stringify(payload) },
-      token,
-    ),
-  recursosPorNegocio: (negocioId: number, token: string) =>
-    solicitudApi<Recurso[]>(
-      "BUSINESS", `/api/v1/negocios/${negocioId}/recursos`,
-      {},
-      token,
-    ),
-
-  crearRecurso: (negocioId: number, payload: NuevoRecurso, token: string) =>
-    solicitudApi<unknown>(
-      "BUSINESS", `/api/v1/negocios/${negocioId}/recursos`,
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-      token,
-    ),
-
-  buscarProveedores: (criterio: string, token: string) =>
-    solicitudApi<ProveedorDirectorio[]>(
-      "MASTERS", `/api/v1/proveedores/directorio?criterio=${encodeURIComponent(criterio)}`,
-      {},
-      token,
-    ),
-
-  asignarProveedores: (
-    servicioId: number,
-    proveedorIds: number[],
-    token: string,
-  ) =>
-    solicitudApi<unknown>(
-      "BUSINESS", `/api/v1/servicios/${servicioId}/proveedores`,
-      {
-        method: "POST",
-        body: JSON.stringify({ proveedorIds }),
-      },
-      token,
-    ),
 };
 
 export type Recurso = {
@@ -132,4 +69,186 @@ export type ProveedorDirectorio = {
 
 export type AsignacionProveedores = {
   proveedorIds: number[];
+};
+
+export type BloqueHorarioApi = {
+  horaInicio: string;
+  horaFin: string;
+};
+
+export type DiaHorarioApi = {
+  dia: string;
+  activo: boolean;
+  bloques: BloqueHorarioApi[];
+};
+
+export type HorarioSemanalApi = {
+  mensaje?: string;
+  fechaActualizacion?: string | null;
+  dias: DiaHorarioApi[];
+};
+
+// MASTERS - Perfil y roles del usuario
+export type PerfilUsuario = {
+  idUsuario: number;
+  nombre: string;
+  apellido: string;
+  correo: string;
+  roles: string[];
+};
+
+export type AgregarRolPayload = {
+  nombreRol: "Cliente" | "Propietario" | "Proveedor";
+  tipoDocumento?: string;
+  numeroDocumento?: string;
+  especialidad?: string;
+  descripcionProfesional?: string;
+};
+
+export const api = {
+  // WEB AUTH - Autenticación
+  login: (correo: string, contrasena: string) =>
+    solicitudApi<{ token: string; mensaje: string }>(
+      "AUTH",
+      "/api/v1/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ correo, contrasena }),
+      },
+    ),
+
+  // MASTERS - Registro de usuarios
+  registrar: (payload: RegistroUsuario) =>
+    solicitudApi<unknown>("MASTERS", "/api/v1/usuarios/registro", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // MASTERS - Consultar mi perfil
+  miPerfil: (token: string) =>
+    solicitudApi<PerfilUsuario>(
+      "MASTERS",
+      "/api/v1/usuarios/perfil",
+      {},
+      token,
+    ),
+
+  // MASTERS - Agregar un rol a mi cuenta
+  agregarRol: (usuarioId: number, payload: AgregarRolPayload, token: string) =>
+    solicitudApi<unknown>(
+      "MASTERS",
+      `/api/v1/usuarios/${usuarioId}/roles`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+
+  // MASTERS - Catálogos
+  monedas: () => solicitudApi<Moneda[]>("MASTERS", "/api/v1/monedas"),
+
+  modalidades: () =>
+    solicitudApi<Modalidad[]>("MASTERS", "/api/v1/modalidades"),
+
+  // MASTERS - Negocios
+  negocios: (token: string) =>
+    solicitudApi<Negocio[]>("MASTERS", "/api/v1/negocios", {}, token),
+
+  crearNegocio: (payload: Omit<Negocio, "idNegocio">, token: string) =>
+    solicitudApi<unknown>(
+      "MASTERS",
+      "/api/v1/negocios",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+
+  // MASTERS - Servicios
+  serviciosPorNegocio: (id: number, token: string) =>
+    solicitudApi<Servicio[]>(
+      "MASTERS",
+      `/api/v1/servicios/negocio/${id}`,
+      {},
+      token,
+    ),
+
+  crearServicio: (payload: Omit<Servicio, "idServicio">, token: string) =>
+    solicitudApi<unknown>(
+      "MASTERS",
+      "/api/v1/servicios",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+
+  // MASTERS - Recursos
+  recursosPorNegocio: (negocioId: number, token: string) =>
+    solicitudApi<Recurso[]>(
+      "MASTERS",
+      `/api/v1/negocios/${negocioId}/recursos`,
+      {},
+      token,
+    ),
+
+  crearRecurso: (negocioId: number, payload: NuevoRecurso, token: string) =>
+    solicitudApi<unknown>(
+      "MASTERS",
+      `/api/v1/negocios/${negocioId}/recursos`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+
+  // MASTERS - Directorio de proveedores
+  buscarProveedores: (criterio: string, token: string) =>
+    solicitudApi<ProveedorDirectorio[]>(
+      "MASTERS",
+      `/api/v1/proveedores/directorio?criterio=${encodeURIComponent(criterio)}`,
+      {},
+      token,
+    ),
+
+  // BUSINESS - Asignación de proveedores
+  asignarProveedores: (
+    servicioId: number,
+    proveedorIds: number[],
+    token: string,
+  ) =>
+    solicitudApi<unknown>(
+      "BUSINESS",
+      `/api/v1/servicios/${servicioId}/proveedores`,
+      {
+        method: "POST",
+        body: JSON.stringify({ proveedorIds }),
+      },
+      token,
+    ),
+
+  // MASTERS - Consultar horario del proveedor
+  obtenerMiHorario: (token: string) =>
+    solicitudApi<HorarioSemanalApi>(
+      "MASTERS",
+      "/api/v1/proveedores/me/horario",
+      {},
+      token,
+    ),
+
+  // MASTERS - Guardar horario del proveedor
+  guardarMiHorario: (dias: DiaHorarioApi[], token: string) =>
+    solicitudApi<HorarioSemanalApi>(
+      "MASTERS",
+      "/api/v1/proveedores/me/horario",
+      {
+        method: "PUT",
+        body: JSON.stringify({ dias }),
+      },
+      token,
+    ),
 };
