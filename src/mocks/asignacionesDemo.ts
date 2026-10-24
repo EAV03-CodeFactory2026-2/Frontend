@@ -6,7 +6,7 @@ const CLAVE_ASIGNACIONES = "reservaflow-asignaciones-demo-v2";
 
 export const proveedoresDemo: ProveedorDirectorio[] = [
   {
-    idProveedor: 201,
+    idUsuario: 201,
     nombre: "Carlos",
     apellido: "Ruiz",
     especialidad: "Barbero",
@@ -14,7 +14,7 @@ export const proveedoresDemo: ProveedorDirectorio[] = [
     numeroDocumento: "123456",
   },
   {
-    idProveedor: 202,
+    idUsuario: 202,
     nombre: "Diego",
     apellido: "Salas",
     especialidad: "Estilista",
@@ -22,7 +22,7 @@ export const proveedoresDemo: ProveedorDirectorio[] = [
     numeroDocumento: "789012",
   },
   {
-    idProveedor: 203,
+    idUsuario: 203,
     nombre: "Ana",
     apellido: "Gómez",
     especialidad: "Manicurista",
@@ -30,7 +30,6 @@ export const proveedoresDemo: ProveedorDirectorio[] = [
     numeroDocumento: "456789",
   },
 ];
-
 export function obtenerServiciosDemo(): Servicio[] {
   try {
     const valor = localStorage.getItem(CLAVE_SERVICIOS);

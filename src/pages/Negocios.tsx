@@ -1,4 +1,3 @@
-
 import { useEffect, useState, type FormEvent } from "react";
 import {
   Store,
@@ -35,8 +34,7 @@ export default function Negocios() {
 
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
-  const [identificacionFiscal, setIdentificacionFiscal] =
-    useState("");
+  const [identificacionFiscal, setIdentificacionFiscal] = useState("");
   const [monedaCodigoIso, setMonedaCodigoIso] = useState("");
   const [telefono, setTelefono] = useState("");
 
@@ -64,17 +62,13 @@ export default function Negocios() {
       const respuesta = await api.negocios(token);
 
       if (!Array.isArray(respuesta)) {
-        throw new Error(
-          "La API devolvió un formato de negocios inesperado."
-        );
+        throw new Error("La API devolvió un formato de negocios inesperado.");
       }
 
       setNegocios(respuesta);
     } catch (e) {
       setError(
-        e instanceof Error
-          ? e.message
-          : "No se pudieron cargar los negocios."
+        e instanceof Error ? e.message : "No se pudieron cargar los negocios.",
       );
     } finally {
       setCargando(false);
@@ -101,9 +95,7 @@ export default function Negocios() {
 
       setMonedas(respuesta);
       setMonedaCodigoIso((actual) => {
-        if (respuesta.some(
-          (m) => m.monedaCodigoIso === actual
-        )) {
+        if (respuesta.some((m) => m.monedaCodigoIso === actual)) {
           return actual;
         }
 
@@ -111,9 +103,7 @@ export default function Negocios() {
       });
     } catch (e) {
       setErrorMonedas(
-        e instanceof Error
-          ? e.message
-          : "No se pudieron cargar las monedas."
+        e instanceof Error ? e.message : "No se pudieron cargar las monedas.",
       );
     } finally {
       setCargandoMonedas(false);
@@ -155,7 +145,7 @@ export default function Negocios() {
           setError(
             e instanceof Error
               ? e.message
-              : "No se pudieron consultar los negocios."
+              : "No se pudieron consultar los negocios.",
           );
         }
       } finally {
@@ -217,7 +207,8 @@ export default function Negocios() {
     if (
       !datos.nombreNegocio ||
       !datos.direccionNegocio ||
-      !datos.identificacionFiscal
+      !datos.identificacionFiscal ||
+      !datos.telefono
     ) {
       setError("Completa todos los campos obligatorios.");
       return;
@@ -227,20 +218,25 @@ export default function Negocios() {
 
     if (MODO_DEMO) {
       const repetido = negociosDemo.some(
-        (negocio) => negocio.identificacionFiscal.toLowerCase() === datos.identificacionFiscal.toLowerCase()
+        (negocio) =>
+          negocio.identificacionFiscal.toLowerCase() ===
+          datos.identificacionFiscal.toLowerCase(),
       );
       if (repetido) {
         setError("Ya existe un negocio con esa identificación fiscal.");
         setGuardando(false);
         return;
       }
-      const siguienteId = Math.max(0, ...negociosDemo.map((n) => n.idNegocio ?? 0)) + 1;
+      const siguienteId =
+        Math.max(0, ...negociosDemo.map((n) => n.idNegocio ?? 0)) + 1;
       negociosDemo.push({ idNegocio: siguienteId, ...datos });
       setNegocios([...negociosDemo]);
       limpiarFormulario();
       setMostrarFormulario(false);
       setError("");
-      setMensaje("Negocio registrado en modo demostración. No se envió a la API.");
+      setMensaje(
+        "Negocio registrado en modo demostración. No se envió a la API.",
+      );
       setGuardando(false);
       return;
     }
@@ -257,9 +253,7 @@ export default function Negocios() {
       await cargarNegocios();
     } catch (e) {
       setError(
-        e instanceof Error
-          ? e.message
-          : "No se pudo registrar el negocio."
+        e instanceof Error ? e.message : "No se pudo registrar el negocio.",
       );
     } finally {
       setGuardando(false);
@@ -269,16 +263,13 @@ export default function Negocios() {
   return (
     <section className="fondo-app min-h-screen px-5 py-10 md:px-10">
       <div className="mx-auto w-full max-w-5xl">
-
         {/* ENCABEZADO */}
         <header className="mb-8 text-center">
           <div className="superficie-app mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm">
             <Store size={30} className="titulo-app" />
           </div>
 
-          <h1 className="titulo-app text-3xl font-bold">
-            Gestión de Negocios
-          </h1>
+          <h1 className="titulo-app text-3xl font-bold">Gestión de Negocios</h1>
 
           <p className="texto-secundario mt-3">
             Administra y registra tus negocios en ReservaFlow.
@@ -287,7 +278,8 @@ export default function Negocios() {
 
         {MODO_DEMO && (
           <p className="texto-secundario mb-5 text-center text-sm">
-            Modo demostración activo · Los datos son ficticios y se perderán al recargar.
+            Modo demostración activo · Los datos son ficticios y se perderán al
+            recargar.
           </p>
         )}
 
@@ -316,9 +308,7 @@ export default function Negocios() {
         <div className="superficie-app rounded-2xl p-6 shadow-sm md:p-8">
           <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-semibold">
-                Mis negocios
-              </h2>
+              <h2 className="text-2xl font-semibold">Mis negocios</h2>
 
               <p className="texto-secundario mt-1 text-sm">
                 Consulta los negocios registrados.
@@ -352,13 +342,11 @@ export default function Negocios() {
               Cargando negocios...
             </p>
           ) : negocios.length === 0 ? (
-            <div className="rounded-xl border p-10 text-center"
+            <div
+              className="rounded-xl border p-10 text-center"
               style={{ borderColor: "var(--borde)" }}
             >
-              <Store
-                size={42}
-                className="titulo-app mx-auto mb-4"
-              />
+              <Store size={42} className="titulo-app mx-auto mb-4" />
 
               <h3 className="text-xl font-semibold">
                 No hay negocios para mostrar
@@ -402,8 +390,7 @@ export default function Negocios() {
                     </p>
 
                     <p>
-                      <strong>Moneda:</strong>{" "}
-                      {negocio.monedaCodigoIso}
+                      <strong>Moneda:</strong> {negocio.monedaCodigoIso}
                     </p>
                   </div>
                 </article>
@@ -414,9 +401,7 @@ export default function Negocios() {
 
         {/* FORMULARIO */}
         {mostrarFormulario && (
-          <div
-            className="superficie-app mt-8 rounded-2xl p-6 shadow-lg md:p-9"
-          >
+          <div className="superficie-app mt-8 rounded-2xl p-6 shadow-lg md:p-9">
             <div className="mb-7 flex items-center justify-between gap-4">
               <h2 className="text-2xl font-semibold">
                 Registrar nuevo negocio
@@ -479,9 +464,7 @@ export default function Negocios() {
                   required
                   placeholder="Ej. 900123456"
                   value={identificacionFiscal}
-                  onChange={(e) =>
-                    setIdentificacionFiscal(e.target.value)
-                  }
+                  onChange={(e) => setIdentificacionFiscal(e.target.value)}
                 />
               </div>
 
@@ -533,7 +516,7 @@ export default function Negocios() {
 
               <div>
                 <label htmlFor="telefono" className="mb-2 block font-medium">
-                  Teléfono (opcional)
+                  Teléfono *
                 </label>
 
                 <input
@@ -543,6 +526,7 @@ export default function Negocios() {
                   placeholder="Ej. 3001234567"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
+                  required
                 />
               </div>
 
@@ -559,15 +543,11 @@ export default function Negocios() {
                 <button
                   type="submit"
                   disabled={
-                    guardando ||
-                    cargandoMonedas ||
-                    monedas.length === 0
+                    guardando || cargandoMonedas || monedas.length === 0
                   }
                   className="boton-app disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {guardando
-                    ? "Guardando..."
-                    : "Guardar negocio"}
+                  {guardando ? "Guardando..." : "Guardar negocio"}
                 </button>
               </div>
             </form>

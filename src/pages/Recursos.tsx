@@ -1,4 +1,3 @@
-
 import { useEffect, useState, type FormEvent } from "react";
 import { Boxes, Plus, RefreshCw } from "lucide-react";
 import { api, type Negocio, type Recurso } from "../services/api";
@@ -25,11 +24,7 @@ function leerRecursosDemo(): RecursosPorNegocio {
 
     const datos: unknown = JSON.parse(guardados);
 
-    if (
-      !datos ||
-      typeof datos !== "object" ||
-      Array.isArray(datos)
-    ) {
+    if (!datos || typeof datos !== "object" || Array.isArray(datos)) {
       return {};
     }
 
@@ -39,18 +34,12 @@ function leerRecursosDemo(): RecursosPorNegocio {
   }
 }
 
-function guardarRecursosDemo(
-  negocioId: number,
-  recursos: Recurso[],
-) {
+function guardarRecursosDemo(negocioId: number, recursos: Recurso[]) {
   const datos = leerRecursosDemo();
 
   datos[String(negocioId)] = recursos;
 
-  localStorage.setItem(
-    CLAVE_RECURSOS,
-    JSON.stringify(datos),
-  );
+  localStorage.setItem(CLAVE_RECURSOS, JSON.stringify(datos));
 }
 
 // Normaliza nombres para validar duplicados.
@@ -71,8 +60,7 @@ export default function Recursos() {
   const [negocioId, setNegocioId] = useState("");
   const [recursos, setRecursos] = useState<Recurso[]>([]);
 
-  const [mostrarFormulario, setMostrarFormulario] =
-    useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState("");
@@ -83,8 +71,7 @@ export default function Recursos() {
   const [mensaje, setMensaje] = useState("");
 
   const [cargando, setCargando] = useState(false);
-  const [cargandoRecursos, setCargandoRecursos] =
-    useState(false);
+  const [cargandoRecursos, setCargandoRecursos] = useState(false);
 
   const sesion = obtenerSesion();
   const token = sesion?.token ?? "";
@@ -98,9 +85,7 @@ export default function Recursos() {
 
     async function cargarNegocios() {
       try {
-        const datos = MODO_DEMO
-          ? [...negociosDemo]
-          : await api.negocios(token);
+        const datos = MODO_DEMO ? [...negociosDemo] : await api.negocios(token);
 
         if (activo) {
           setNegocios(datos);
@@ -108,9 +93,7 @@ export default function Recursos() {
       } catch (e) {
         if (activo) {
           setError(
-            e instanceof Error
-              ? e.message
-              : "Error al cargar los negocios.",
+            e instanceof Error ? e.message : "Error al cargar los negocios.",
           );
         }
       }
@@ -143,20 +126,18 @@ export default function Recursos() {
         const id = Number(negocioId);
 
         const datos = MODO_DEMO
-          ? leerRecursosDemo()[String(id)] ?? []
-          : await api.recursosPorNegocio(id, token);
+          ? (leerRecursosDemo()[String(id)] ?? [])
+          : (await api.recursosPorNegocio(id, token)).recursos;
 
         if (activo) {
-          setRecursos([...datos]);
+          setRecursos(datos);
         }
       } catch (e) {
         if (activo) {
           setRecursos([]);
 
           setError(
-            e instanceof Error
-              ? e.message
-              : "Error al cargar los recursos.",
+            e instanceof Error ? e.message : "Error al cargar los recursos.",
           );
         }
       } finally {
@@ -190,14 +171,12 @@ export default function Recursos() {
       const id = Number(negocioId);
 
       const datos = MODO_DEMO
-        ? leerRecursosDemo()[String(id)] ?? []
-        : await api.recursosPorNegocio(id, token);
+        ? (leerRecursosDemo()[String(id)] ?? [])
+        : (await api.recursosPorNegocio(id, token)).recursos;
 
-      setRecursos([...datos]);
+      setRecursos(datos);
 
-      setMensaje(
-        "Listado de recursos actualizado correctamente.",
-      );
+      setMensaje("Listado de recursos actualizado correctamente.");
     } catch (e) {
       setError(
         e instanceof Error
@@ -269,9 +248,7 @@ export default function Recursos() {
 
     // Validar campos obligatorios
     if (!nombreLimpio || !tipoLimpio) {
-      setError(
-        "El nombre y el tipo de recurso son obligatorios.",
-      );
+      setError("El nombre y el tipo de recurso son obligatorios.");
       return;
     }
 
@@ -282,28 +259,22 @@ export default function Recursos() {
       cantidadNumero < 1 ||
       cantidadNumero > 999
     ) {
-      setError(
-        "La cantidad debe ser un número entero entre 1 y 999.",
-      );
+      setError("La cantidad debe ser un número entero entre 1 y 999.");
       return;
     }
 
     // Consultar recursos actuales
     const recursosActuales = MODO_DEMO
-      ? leerRecursosDemo()[String(id)] ?? []
+      ? (leerRecursosDemo()[String(id)] ?? [])
       : recursos;
 
     // Validar nombre duplicado
     const existeDuplicado = recursosActuales.some(
-      (recurso) =>
-        normalizar(recurso.nombre) ===
-        normalizar(nombreLimpio),
+      (recurso) => normalizar(recurso.nombre) === normalizar(nombreLimpio),
     );
 
     if (existeDuplicado) {
-      setError(
-        "Ya existe un recurso con este nombre en el negocio.",
-      );
+      setError("Ya existe un recurso con este nombre en el negocio.");
       return;
     }
 
@@ -326,37 +297,29 @@ export default function Recursos() {
           estado: "Activo",
         };
 
-        const actualizados = [
-          ...recursosActuales,
-          nuevo,
-        ];
+        const actualizados = [...recursosActuales, nuevo];
 
         guardarRecursosDemo(id, actualizados);
 
         setRecursos(actualizados);
       } else {
-        // Registrar recurso en Business
+        // Registrar recurso en Masters
         await api.crearRecurso(id, payload, token);
 
         // Consultar listado actualizado
-        const actualizados =
-          await api.recursosPorNegocio(id, token);
+        const respuesta = await api.recursosPorNegocio(id, token);
 
-        setRecursos(actualizados);
+        setRecursos(respuesta.recursos);
       }
 
       // Cerrar y limpiar formulario
       setMostrarFormulario(false);
       limpiarFormulario();
 
-      setMensaje(
-        "Recurso registrado correctamente.",
-      );
+      setMensaje("Recurso registrado correctamente.");
     } catch (e) {
       setError(
-        e instanceof Error
-          ? e.message
-          : "No se pudo registrar el recurso.",
+        e instanceof Error ? e.message : "No se pudo registrar el recurso.",
       );
     } finally {
       setCargando(false);
@@ -370,18 +333,12 @@ export default function Recursos() {
   return (
     <section className="fondo-app min-h-screen px-5 py-10 md:px-10">
       <div className="mx-auto max-w-5xl">
-
         {/* ENCABEZADO */}
 
         <header className="mb-8 text-center">
-          <Boxes
-            className="titulo-app mx-auto mb-3"
-            size={36}
-          />
+          <Boxes className="titulo-app mx-auto mb-3" size={36} />
 
-          <h1 className="titulo-app text-3xl font-bold">
-            Gestión de Recursos
-          </h1>
+          <h1 className="titulo-app text-3xl font-bold">Gestión de Recursos</h1>
 
           <p className="texto-secundario mt-3">
             Administra los recursos de tus negocios.
@@ -391,10 +348,7 @@ export default function Recursos() {
         {/* SELECCIONAR NEGOCIO */}
 
         <div className="superficie-app mb-6 rounded-2xl p-6">
-          <label
-            htmlFor="negocio"
-            className="mb-2 block font-medium"
-          >
+          <label htmlFor="negocio" className="mb-2 block font-medium">
             Seleccionar negocio
           </label>
 
@@ -409,15 +363,10 @@ export default function Recursos() {
               setMostrarFormulario(false);
             }}
           >
-            <option value="">
-              Selecciona un negocio
-            </option>
+            <option value="">Selecciona un negocio</option>
 
             {negocios.map((negocio) => (
-              <option
-                key={negocio.idNegocio}
-                value={negocio.idNegocio}
-              >
+              <option key={negocio.idNegocio} value={negocio.idNegocio}>
                 {negocio.nombreNegocio}
               </option>
             ))}
@@ -427,17 +376,12 @@ export default function Recursos() {
         {/* LISTADO DE RECURSOS */}
 
         <div className="superficie-app rounded-2xl p-6">
-
           {/* TÍTULO Y BOTONES */}
 
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-
-            <h2 className="text-2xl font-semibold">
-              Mis recursos
-            </h2>
+            <h2 className="text-2xl font-semibold">Mis recursos</h2>
 
             <div className="flex flex-wrap items-center justify-end gap-3">
-
               {/* BOTÓN ACTUALIZAR */}
 
               <button
@@ -448,9 +392,7 @@ export default function Recursos() {
               >
                 <RefreshCw size={18} />
 
-                {cargandoRecursos
-                  ? "Actualizando..."
-                  : "Actualizar"}
+                {cargandoRecursos ? "Actualizando..." : "Actualizar"}
               </button>
 
               {/* BOTÓN NUEVO RECURSO */}
@@ -470,19 +412,13 @@ export default function Recursos() {
           {/* MENSAJES */}
 
           {mensaje && (
-            <p
-              role="status"
-              className="mb-4 text-green-600"
-            >
+            <p role="status" className="mb-4 text-green-600">
               {mensaje}
             </p>
           )}
 
           {!mostrarFormulario && error && (
-            <p
-              role="alert"
-              className="mb-4 text-red-500"
-            >
+            <p role="alert" className="mb-4 text-red-500">
               {error}
             </p>
           )}
@@ -491,13 +427,10 @@ export default function Recursos() {
 
           {!negocioId ? (
             <p className="texto-secundario">
-              Selecciona un negocio para consultar
-              sus recursos.
+              Selecciona un negocio para consultar sus recursos.
             </p>
           ) : cargandoRecursos ? (
-            <p className="texto-secundario">
-              Cargando recursos...
-            </p>
+            <p className="texto-secundario">Cargando recursos...</p>
           ) : recursos.length === 0 ? (
             <p className="texto-secundario">
               No hay recursos registrados para este negocio.
@@ -509,27 +442,18 @@ export default function Recursos() {
                   key={recurso.idRecurso ?? indice}
                   className="rounded-xl border border-slate-200 p-5 dark:border-slate-600"
                 >
-                  <h3 className="text-xl font-semibold">
-                    {recurso.nombre}
-                  </h3>
+                  <h3 className="text-xl font-semibold">{recurso.nombre}</h3>
 
                   <p className="texto-secundario mt-2">
-                    {recurso.descripcion ||
-                      "Sin descripción"}
+                    {recurso.descripcion || "Sin descripción"}
                   </p>
 
                   <div className="mt-3 space-y-1">
-                    <p>
-                      Tipo: {recurso.tipo}
-                    </p>
+                    <p>Tipo: {recurso.tipo}</p>
 
-                    <p>
-                      Cantidad: {recurso.cantidad}
-                    </p>
+                    <p>Cantidad: {recurso.cantidad}</p>
 
-                    <p>
-                      Estado: {recurso.estado ?? "Activo"}
-                    </p>
+                    <p>Estado: {recurso.estado ?? "Activo"}</p>
                   </div>
                 </article>
               ))}
@@ -557,7 +481,6 @@ export default function Recursos() {
             aria-labelledby="titulo-modal-recurso"
             className="superficie-app max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl p-6 shadow-2xl md:p-8"
           >
-
             {/* TÍTULO DEL MODAL */}
 
             <div className="mb-6">
@@ -571,18 +494,11 @@ export default function Recursos() {
 
             {/* FORMULARIO */}
 
-            <form
-              onSubmit={guardar}
-              className="space-y-5"
-            >
-
+            <form onSubmit={guardar} className="space-y-5">
               {/* NOMBRE */}
 
               <div>
-                <label
-                  htmlFor="nombre"
-                  className="mb-2 block font-medium"
-                >
+                <label htmlFor="nombre" className="mb-2 block font-medium">
                   Nombre del recurso *
                 </label>
 
@@ -592,9 +508,7 @@ export default function Recursos() {
                   required
                   autoFocus
                   value={nombre}
-                  onChange={(e) =>
-                    setNombre(e.target.value)
-                  }
+                  onChange={(e) => setNombre(e.target.value)}
                   placeholder="Ej. Silla de barbería"
                 />
               </div>
@@ -602,10 +516,7 @@ export default function Recursos() {
               {/* TIPO */}
 
               <div>
-                <label
-                  htmlFor="tipo"
-                  className="mb-2 block font-medium"
-                >
+                <label htmlFor="tipo" className="mb-2 block font-medium">
                   Tipo de recurso *
                 </label>
 
@@ -614,9 +525,7 @@ export default function Recursos() {
                   className="campo-app w-full"
                   required
                   value={tipo}
-                  onChange={(e) =>
-                    setTipo(e.target.value)
-                  }
+                  onChange={(e) => setTipo(e.target.value)}
                   placeholder="Ej. Equipo"
                 />
               </div>
@@ -624,10 +533,7 @@ export default function Recursos() {
               {/* CANTIDAD */}
 
               <div>
-                <label
-                  htmlFor="cantidad"
-                  className="mb-2 block font-medium"
-                >
+                <label htmlFor="cantidad" className="mb-2 block font-medium">
                   Cantidad *
                 </label>
 
@@ -640,19 +546,14 @@ export default function Recursos() {
                   className="campo-app w-full"
                   required
                   value={cantidad}
-                  onChange={(e) =>
-                    setCantidad(e.target.value)
-                  }
+                  onChange={(e) => setCantidad(e.target.value)}
                 />
               </div>
 
               {/* DESCRIPCIÓN */}
 
               <div>
-                <label
-                  htmlFor="descripcion"
-                  className="mb-2 block font-medium"
-                >
+                <label htmlFor="descripcion" className="mb-2 block font-medium">
                   Descripción (opcional)
                 </label>
 
@@ -661,9 +562,7 @@ export default function Recursos() {
                   className="campo-app w-full"
                   rows={3}
                   value={descripcion}
-                  onChange={(e) =>
-                    setDescripcion(e.target.value)
-                  }
+                  onChange={(e) => setDescripcion(e.target.value)}
                   placeholder="Describe el recurso"
                 />
               </div>
@@ -671,10 +570,7 @@ export default function Recursos() {
               {/* ERROR */}
 
               {error && (
-                <p
-                  role="alert"
-                  className="text-sm text-red-500"
-                >
+                <p role="alert" className="text-sm text-red-500">
                   {error}
                 </p>
               )}
@@ -682,7 +578,6 @@ export default function Recursos() {
               {/* BOTONES DEL FORMULARIO */}
 
               <div className="flex flex-wrap justify-end gap-3 pt-2">
-
                 <button
                   type="button"
                   className="campo-app !w-auto px-5 py-3"
@@ -697,9 +592,7 @@ export default function Recursos() {
                   className="boton-app !w-auto px-5 py-3"
                   disabled={cargando}
                 >
-                  {cargando
-                    ? "Guardando..."
-                    : "Guardar recurso"}
+                  {cargando ? "Guardando..." : "Guardar recurso"}
                 </button>
               </div>
             </form>

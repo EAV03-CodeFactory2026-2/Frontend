@@ -35,6 +35,9 @@ const locales: Record<ServicioApi, string> = {
   BUSINESS: "http://localhost:8083",
 };
 
+/**
+ * Obtiene la URL base de cada API.
+ */
 export function urlApi(servicio: ServicioApi): string {
   const configurada = variables[servicio]?.trim().replace(/\/+$/, "");
 
@@ -52,6 +55,9 @@ export function urlApi(servicio: ServicioApi): string {
   );
 }
 
+/**
+ * Traduce los errores HTTP a mensajes comprensibles.
+ */
 function mensajeError(data: unknown, status: number): string {
   if (data && typeof data === "object") {
     const obj = data as Record<string, unknown>;
@@ -67,25 +73,40 @@ function mensajeError(data: unknown, status: number): string {
     return data.slice(0, 240);
   }
 
-  if (status === 401) {
-    return "No fue posible autenticar la solicitud. Verifica tus credenciales o inicia sesión nuevamente.";
-  }
+  switch (status) {
+    case 400:
+      return "Los datos enviados no son válidos. Revisa la información ingresada.";
 
-  if (status === 403) {
-    return "No tienes permisos para realizar esta acción.";
-  }
+    case 401:
+      return "No fue posible autenticar la solicitud. Verifica tus credenciales o inicia sesión nuevamente.";
 
-  if (status === 404) {
-    return "El recurso solicitado no está disponible.";
-  }
+    case 403:
+      return "No tienes permisos para realizar esta acción.";
 
-  if (status >= 500) {
-    return "El servidor presentó un error. Intenta de nuevo más tarde.";
-  }
+    case 404:
+      return "El recurso solicitado no está disponible.";
 
-  return `Error HTTP ${status}`;
+    case 409:
+      return "La operación no se pudo completar porque existe un conflicto con los datos.";
+
+    case 422:
+      return "La información enviada no cumple con las validaciones requeridas.";
+
+    case 429:
+      return "Se realizaron demasiadas solicitudes. Espera un momento e inténtalo nuevamente.";
+
+    default:
+      if (status >= 500) {
+        return "El servidor presentó un error. Intenta nuevamente más tarde.";
+      }
+
+      return `Error HTTP ${status}. No fue posible completar la solicitud.`;
+  }
 }
 
+/**
+ * Realiza solicitudes HTTP a cualquiera de las tres API.
+ */
 export async function solicitudApi<T>(
   servicio: ServicioApi,
   ruta: string,
@@ -113,22 +134,31 @@ export async function solicitudApi<T>(
       ...init,
       headers,
     });
-  } catch {
+  } catch (error) {
+    // No se puede identificar CORS con certeza
+    // únicamente desde fetch.
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(0, "La solicitud fue cancelada.");
+    }
+
     throw new ApiError(
       0,
-      `No fue posible conectar con ${servicio}. Comprueba la URL, HTTPS, disponibilidad y configuración CORS.`,
+      `No fue posible conectar con ${servicio}. Verifica que la API esté disponible, que la URL sea correcta y que el servidor permita solicitudes desde este frontend (CORS).`,
     );
   }
 
-  const contenido = await respuesta.text();
-
   let datos: unknown = null;
 
-  if (contenido) {
-    try {
-      datos = JSON.parse(contenido);
-    } catch {
-      datos = contenido;
+  // Algunas operaciones pueden responder sin contenido.
+  if (respuesta.status !== 204 && respuesta.status !== 205) {
+    const contenido = await respuesta.text();
+
+    if (contenido) {
+      try {
+        datos = JSON.parse(contenido);
+      } catch {
+        datos = contenido;
+      }
     }
   }
 
@@ -140,8 +170,8 @@ export async function solicitudApi<T>(
 
     const disponibles = Array.isArray(obj.rolesDisponibles)
       ? obj.rolesDisponibles.filter(
-          (r): r is RolApi =>
-            r === "Cliente" || r === "Propietario" || r === "Proveedor",
+          (rol): rol is RolApi =>
+            rol === "Cliente" || rol === "Propietario" || rol === "Proveedor",
         )
       : [];
 

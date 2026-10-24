@@ -107,11 +107,7 @@ export default function Login() {
             "o no fue posible autenticar el rol seleccionado.",
         );
       } else if (err instanceof ApiError && err.status === 0) {
-        setError(
-          "No fue posible conectar con WebAuth. " +
-            "Verifica que la API esté disponible " +
-            "y que permita conexiones desde el frontend (CORS).",
-        );
+        setError(err.message);
       } else {
         setError(
           err instanceof Error

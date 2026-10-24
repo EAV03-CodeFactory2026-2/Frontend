@@ -4,7 +4,7 @@ export type Negocio = {
   idNegocio?: number;
   nombreNegocio: string;
   direccionNegocio: string;
-  telefono?: string;
+  telefono: string;
   identificacionFiscal: string;
   monedaCodigoIso: string;
 };
@@ -59,12 +59,33 @@ export type NuevoRecurso = {
 };
 
 export type ProveedorDirectorio = {
-  idProveedor: number;
+  idUsuario: number;
+  idProveedor?: number;
   nombre: string;
   apellido: string;
   especialidad: string;
   tipoDocumento: string;
   numeroDocumento: string;
+};
+
+export type RecursosNegocioResponse = {
+  mensaje: string;
+  recursos: Recurso[];
+};
+
+export type CrearRecursoResponse = {
+  mensaje: string;
+  recurso: Recurso;
+};
+
+export type DirectorioProveedoresResponse = {
+  mensaje: string;
+  proveedores: ProveedorDirectorio[];
+  pagina: number;
+  tamanoPagina: number;
+  totalResultados: number;
+  totalPaginas: number;
+  hayMasPaginas: boolean;
 };
 
 export type AsignacionProveedores = {
@@ -188,7 +209,7 @@ export const api = {
 
   // MASTERS - Recursos
   recursosPorNegocio: (negocioId: number, token: string) =>
-    solicitudApi<Recurso[]>(
+    solicitudApi<RecursosNegocioResponse>(
       "MASTERS",
       `/api/v1/negocios/${negocioId}/recursos`,
       {},
@@ -196,7 +217,7 @@ export const api = {
     ),
 
   crearRecurso: (negocioId: number, payload: NuevoRecurso, token: string) =>
-    solicitudApi<unknown>(
+    solicitudApi<CrearRecursoResponse>(
       "MASTERS",
       `/api/v1/negocios/${negocioId}/recursos`,
       {
@@ -207,10 +228,10 @@ export const api = {
     ),
 
   // MASTERS - Directorio de proveedores
-  buscarProveedores: (criterio: string, token: string) =>
-    solicitudApi<ProveedorDirectorio[]>(
+  buscarProveedores: (criterio: string, token: string, pagina = 1) =>
+    solicitudApi<DirectorioProveedoresResponse>(
       "MASTERS",
-      `/api/v1/proveedores/directorio?criterio=${encodeURIComponent(criterio)}`,
+      `/api/v1/proveedores/directorio?criterio=${encodeURIComponent(criterio)}&pagina=${pagina}`,
       {},
       token,
     ),

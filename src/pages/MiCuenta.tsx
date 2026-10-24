@@ -104,12 +104,15 @@ export default function MiCuenta() {
     }
 
     if (
-      nuevoRol === "Proveedor" &&
-      (!tipoDocumento.trim() || !numeroDocumento.trim() || !especialidad.trim())
+      (nuevoRol === "Propietario" || nuevoRol === "Proveedor") &&
+      (!tipoDocumento.trim() || !numeroDocumento.trim())
     ) {
-      setError(
-        "Para agregar el rol Proveedor completa el documento y la especialidad.",
-      );
+      setError("Completa el tipo y número de documento.");
+      return;
+    }
+
+    if (nuevoRol === "Proveedor" && !especialidad.trim()) {
+      setError("Completa la especialidad del proveedor.");
       return;
     }
 
@@ -117,9 +120,12 @@ export default function MiCuenta() {
       nombreRol: nuevoRol,
     };
 
-    if (nuevoRol === "Proveedor") {
+    if (nuevoRol === "Propietario" || nuevoRol === "Proveedor") {
       payload.tipoDocumento = tipoDocumento.trim();
       payload.numeroDocumento = numeroDocumento.trim();
+    }
+
+    if (nuevoRol === "Proveedor") {
       payload.especialidad = especialidad.trim();
       payload.descripcionProfesional = descripcionProfesional.trim();
     }
@@ -338,50 +344,52 @@ export default function MiCuenta() {
                       </select>
                     </div>
 
-                    {/* CAMPOS ESPECÍFICOS DEL PROVEEDOR */}
-                    {nuevoRol === "Proveedor" && (
-                      <div className="space-y-5">
-                        <div className="grid gap-5 sm:grid-cols-2">
-                          <div>
-                            <label
-                              htmlFor="tipo-documento"
-                              className="mb-2 block font-medium"
-                            >
-                              Tipo de documento *
-                            </label>
+                    {/* DOCUMENTO REQUERIDO PARA PROPIETARIO Y PROVEEDOR */}
+                    {(nuevoRol === "Propietario" ||
+                      nuevoRol === "Proveedor") && (
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div>
+                          <label
+                            htmlFor="tipo-documento"
+                            className="mb-2 block font-medium"
+                          >
+                            Tipo de documento *
+                          </label>
 
-                            <input
-                              id="tipo-documento"
-                              className="campo-app w-full"
-                              value={tipoDocumento}
-                              onChange={(e) => setTipoDocumento(e.target.value)}
-                              placeholder="Ej. CC"
-                              required
-                              disabled={guardando}
-                            />
-                          </div>
-
-                          <div>
-                            <label
-                              htmlFor="numero-documento"
-                              className="mb-2 block font-medium"
-                            >
-                              Número de documento *
-                            </label>
-
-                            <input
-                              id="numero-documento"
-                              className="campo-app w-full"
-                              value={numeroDocumento}
-                              onChange={(e) =>
-                                setNumeroDocumento(e.target.value)
-                              }
-                              required
-                              disabled={guardando}
-                            />
-                          </div>
+                          <input
+                            id="tipo-documento"
+                            className="campo-app w-full"
+                            value={tipoDocumento}
+                            onChange={(e) => setTipoDocumento(e.target.value)}
+                            placeholder="Ej. CC"
+                            required
+                            disabled={guardando}
+                          />
                         </div>
 
+                        <div>
+                          <label
+                            htmlFor="numero-documento"
+                            className="mb-2 block font-medium"
+                          >
+                            Número de documento *
+                          </label>
+
+                          <input
+                            id="numero-documento"
+                            className="campo-app w-full"
+                            value={numeroDocumento}
+                            onChange={(e) => setNumeroDocumento(e.target.value)}
+                            required
+                            disabled={guardando}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* INFORMACIÓN PROFESIONAL SOLO PARA PROVEEDOR */}
+                    {nuevoRol === "Proveedor" && (
+                      <div className="space-y-5">
                         <div>
                           <label
                             htmlFor="especialidad"

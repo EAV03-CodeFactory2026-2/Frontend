@@ -27,6 +27,9 @@ export default function AsignacionProveedores() {
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
   const [asignados, setAsignados] = useState<number[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalResultados, setTotalResultados] = useState(0);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const token = obtenerSesion()?.token ?? "";
@@ -59,6 +62,9 @@ export default function AsignacionProveedores() {
     setSeleccionados([]);
     setAsignados([]);
     setResultados([]);
+    setPagina(1);
+    setTotalPaginas(0);
+    setTotalResultados(0);
     setMensaje("");
     setError("");
     if (!negocioId) return;
@@ -89,6 +95,9 @@ export default function AsignacionProveedores() {
     setSeleccionados([]);
     setResultados([]);
     setCriterio("");
+    setPagina(1);
+    setTotalPaginas(0);
+    setTotalResultados(0);
     setMensaje("");
     setError("");
     if (!servicioId) {
@@ -103,7 +112,7 @@ export default function AsignacionProveedores() {
     }
   }, [servicioId]);
 
-  async function buscar() {
+  async function buscar(numeroPagina = 1) {
     setError("");
     setMensaje("");
     setResultados([]);
@@ -136,13 +145,20 @@ export default function AsignacionProveedores() {
           ].some((campo) => normalizar(campo).includes(normalizar(texto))),
         );
         setResultados(encontrado);
+        setPagina(1);
+        setTotalPaginas(encontrado.length > 0 ? 1 : 0);
+        setTotalResultados(encontrado.length);
       } else {
-        const datos = await api.buscarProveedores(texto, token);
-        if (!Array.isArray(datos))
+        const datos = await api.buscarProveedores(texto, token, numeroPagina);
+        if (!Array.isArray(datos.proveedores)) {
           throw new Error(
-            "El directorio devolvió un formato paginado que aún debe adaptarse.",
+            "La respuesta del directorio no contiene una lista válida de proveedores.",
           );
-        setResultados(datos);
+        }
+        setResultados(datos.proveedores);
+        setPagina(numeroPagina);
+        setTotalPaginas(datos.totalPaginas);
+        setTotalResultados(datos.totalResultados);
       }
     } catch (e) {
       setError(
@@ -196,7 +212,7 @@ export default function AsignacionProveedores() {
   const servicioSeleccionado = servicios.find(
     (s) => String(s.idServicio) === servicioId,
   );
-  const proveedoresVisibles = [...proveedoresDemo, ...resultados];
+  const proveedoresVisibles = MODO_DEMO ? proveedoresDemo : resultados;
 
   return (
     <section className="fondo-app min-h-screen px-5 py-10 md:px-10">
@@ -273,7 +289,7 @@ export default function AsignacionProveedores() {
             <button
               type="button"
               className="boton-app !w-auto inline-flex items-center gap-2 px-5"
-              onClick={() => void buscar()}
+              onClick={() => void buscar(1)}
               disabled={!servicioId || cargando}
             >
               <Search size={18} /> Buscar
@@ -320,7 +336,7 @@ export default function AsignacionProveedores() {
                   <div className="space-y-3">
                     {asignados.map((id) => {
                       const p = proveedoresVisibles.find(
-                        (proveedor) => proveedor.idProveedor === id,
+                        (proveedor) => proveedor.idUsuario === id,
                       );
                       return (
                         <div
@@ -368,22 +384,24 @@ export default function AsignacionProveedores() {
           )}
           {resultados.length > 0 && (
             <div className="mt-6 space-y-3">
-              <h3 className="font-semibold">Resultados de búsqueda</h3>
+              <h3 className="font-semibold">
+                Resultados de búsqueda ({totalResultados})
+              </h3>
               {resultados.map((p) => {
-                const yaAsignado = asignados.includes(p.idProveedor);
+                const yaAsignado = asignados.includes(p.idUsuario);
                 return (
                   <label
-                    key={p.idProveedor}
+                    key={p.idUsuario}
                     className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-300 p-4"
                   >
                     <input
                       type="checkbox"
                       className="mt-1"
                       checked={
-                        yaAsignado || seleccionados.includes(p.idProveedor)
+                        yaAsignado || seleccionados.includes(p.idUsuario)
                       }
                       disabled={yaAsignado}
-                      onChange={() => alternarProveedor(p.idProveedor)}
+                      onChange={() => alternarProveedor(p.idUsuario)}
                     />
                     <div>
                       <p className="font-semibold">
@@ -404,6 +422,29 @@ export default function AsignacionProveedores() {
                   </label>
                 );
               })}
+            </div>
+          )}
+          {totalPaginas > 1 && (
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className="campo-app px-4 py-2"
+                disabled={cargando || pagina <= 1}
+                onClick={() => void buscar(pagina - 1)}
+              >
+                Anterior
+              </button>
+              <span className="texto-secundario text-sm">
+                Página {pagina} de {totalPaginas}
+              </span>
+              <button
+                type="button"
+                className="campo-app px-4 py-2"
+                disabled={cargando || pagina >= totalPaginas}
+                onClick={() => void buscar(pagina + 1)}
+              >
+                Siguiente
+              </button>
             </div>
           )}
           <div className="mt-6 flex justify-end">
