@@ -88,6 +88,26 @@ export type DirectorioProveedoresResponse = {
   hayMasPaginas: boolean;
 };
 
+export type ProveedorAsignado = {
+  idUsuario: number;
+  nombre: string;
+  apellido: string;
+  especialidad: string;
+  tipoDocumento: string;
+  numeroDocumento: string;
+};
+
+export type ServicioAsignado = {
+  idServicio: number;
+  nombre: string;
+  descripcion: string;
+  duracionMinutos: number;
+  precio: number;
+  estado: string;
+  idNegocio: number | null;
+  nombreNegocio: string | null;
+};
+
 export type AsignacionProveedores = {
   proveedorIds: number[];
 };
@@ -176,6 +196,15 @@ export const api = {
   negocios: (token: string) =>
     solicitudApi<Negocio[]>("MASTERS", "/api/v1/negocios", {}, token),
 
+  // MASTERS - Catálogo de negocios activos para el cliente
+  negociosDisponibles: (token: string) =>
+    solicitudApi<Negocio[]>(
+      "MASTERS",
+      "/api/v1/negocios/disponibles",
+      {},
+      token,
+    ),
+
   crearNegocio: (payload: Omit<Negocio, "idNegocio">, token: string) =>
     solicitudApi<unknown>(
       "MASTERS",
@@ -249,6 +278,24 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ proveedorIds }),
       },
+      token,
+    ),
+
+  // BUSINESS - Consultar proveedores ya vinculados a un servicio
+  proveedoresAsignados: (servicioId: number, token: string) =>
+    solicitudApi<ProveedorAsignado[]>(
+      "BUSINESS",
+      `/api/v1/servicios/${servicioId}/proveedores`,
+      {},
+      token,
+    ),
+
+  // BUSINESS - Consultar servicios del proveedor autenticado
+  misServiciosAsignados: (token: string) =>
+    solicitudApi<ServicioAsignado[]>(
+      "BUSINESS",
+      "/api/v1/proveedores/mis-servicios",
+      {},
       token,
     ),
 

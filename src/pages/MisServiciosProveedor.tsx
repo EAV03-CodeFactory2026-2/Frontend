@@ -1,10 +1,33 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BriefcaseBusiness, Store, Clock3, RefreshCw, UserRound, CalendarClock, Pencil } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Store,
+  Clock3,
+  RefreshCw,
+  UserRound,
+  CalendarClock,
+  Pencil,
+} from "lucide-react";
 import { negociosDemo } from "../mocks/demo";
-import { obtenerServiciosDemo, obtenerAsignacionesDemo, proveedoresDemo } from "../mocks/asignacionesDemo";
-import type { Negocio, Servicio } from "../services/api";
-import { CLAVE_PROVEEDOR_DEMO, obtenerProveedorDemoId, leerHorarioProveedorDemo, type DiaHorario } from "../mocks/horariosDemo";
+import {
+  obtenerServiciosDemo,
+  obtenerAsignacionesDemo,
+  proveedoresDemo,
+} from "../mocks/asignacionesDemo";
+import {
+  api,
+  type Negocio,
+  type Servicio,
+  type ServicioAsignado,
+} from "../services/api";
+import { obtenerSesion } from "../services/auth";
+import {
+  CLAVE_PROVEEDOR_DEMO,
+  obtenerProveedorDemoId,
+  leerHorarioProveedorDemo,
+  type DiaHorario,
+} from "../mocks/horariosDemo";
 
 const MODO_DEMO = import.meta.env.VITE_MODO_DEMO === "true";
 type Grupo = { negocio: Negocio; servicios: Servicio[] };
@@ -13,6 +36,48 @@ export default function MisServiciosProveedor() {
   const [proveedorId, setProveedorId] = useState(obtenerProveedorDemoId);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [horario, setHorario] = useState<DiaHorario[] | null>(null);
+  const [serviciosReales, setServiciosReales] = useState<ServicioAsignado[]>(
+    [],
+  );
+  const [cargandoReales, setCargandoReales] = useState(false);
+  const [errorReales, setErrorReales] = useState("");
+  const [actualizacion, setActualizacion] = useState(0);
+
+  useEffect(() => {
+    if (MODO_DEMO) return;
+    const sesion = obtenerSesion();
+    if (!sesion || sesion.token === "token-demo") {
+      setErrorReales(
+        "Inicia sesión con una cuenta real de Proveedor para consultar tus servicios.",
+      );
+      setServiciosReales([]);
+      return;
+    }
+    let activo = true;
+    setCargandoReales(true);
+    setErrorReales("");
+    api
+      .misServiciosAsignados(sesion.token)
+      .then((respuesta) => {
+        if (activo) setServiciosReales(respuesta);
+      })
+      .catch((error: unknown) => {
+        if (activo) {
+          setServiciosReales([]);
+          setErrorReales(
+            error instanceof Error
+              ? error.message
+              : "No fue posible consultar tus servicios asignados.",
+          );
+        }
+      })
+      .finally(() => {
+        if (activo) setCargandoReales(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [actualizacion]);
 
   function cargar() {
     setHorario(MODO_DEMO ? leerHorarioProveedorDemo(proveedorId) : null);
@@ -21,14 +86,17 @@ export default function MisServiciosProveedor() {
       return;
     }
     const asignaciones = obtenerAsignacionesDemo();
-    const asignados = obtenerServiciosDemo().filter((servicio) =>
-      servicio.idServicio != null &&
-      (asignaciones[String(servicio.idServicio)] ?? []).includes(proveedorId)
+    const asignados = obtenerServiciosDemo().filter(
+      (servicio) =>
+        servicio.idServicio != null &&
+        (asignaciones[String(servicio.idServicio)] ?? []).includes(proveedorId),
     );
     const negocios = negociosDemo
       .map((negocio) => ({
         negocio,
-        servicios: asignados.filter((servicio) => servicio.negocioId === negocio.idNegocio),
+        servicios: asignados.filter(
+          (servicio) => servicio.negocioId === negocio.idNegocio,
+        ),
       }))
       .filter((grupo) => grupo.servicios.length > 0);
     setGrupos(negocios);
@@ -50,56 +118,210 @@ export default function MisServiciosProveedor() {
           <div className="superficie-app mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm">
             <BriefcaseBusiness size={30} className="titulo-app" />
           </div>
-          <h1 className="titulo-app text-3xl font-bold">Mis servicios asignados</h1>
-          <p className="texto-secundario mt-3">Consulta únicamente los negocios y servicios a los que estás vinculado.</p>
+          <h1 className="titulo-app text-3xl font-bold">
+            Mis servicios asignados
+          </h1>
+          <p className="texto-secundario mt-3">
+            Consulta únicamente los negocios y servicios a los que estás
+            vinculado.
+          </p>
         </header>
 
         {!MODO_DEMO ? (
-          <div className="superficie-app rounded-2xl p-6 shadow-sm">
-            <p>La consulta de servicios del proveedor autenticado está pendiente de conexión con el backend.</p>
-            <p className="texto-secundario mt-2 text-sm">No se mostrarán datos de demostración como si fueran asignaciones reales.</p>
+          <div className="space-y-6">
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="campo-app !w-auto flex items-center gap-2"
+                disabled={cargandoReales}
+                onClick={() => setActualizacion((valor) => valor + 1)}
+              >
+                <RefreshCw size={17} /> Actualizar servicios
+              </button>
+            </div>
+            {cargandoReales ? (
+              <div className="superficie-app rounded-2xl p-8 text-center shadow-sm">
+                Consultando tus servicios asignados...
+              </div>
+            ) : errorReales ? (
+              <div
+                role="alert"
+                className="superficie-app rounded-2xl border border-red-300 p-6 shadow-sm"
+              >
+                <p className="font-semibold">
+                  No se pudieron consultar tus servicios
+                </p>
+                <p className="texto-secundario mt-2 text-sm">{errorReales}</p>
+              </div>
+            ) : serviciosReales.length === 0 ? (
+              <div className="superficie-app rounded-2xl p-10 text-center shadow-sm">
+                <BriefcaseBusiness
+                  size={40}
+                  className="titulo-app mx-auto mb-4"
+                />
+                <h2 className="text-xl font-semibold">
+                  Todavía no tienes servicios asignados
+                </h2>
+                <p className="texto-secundario mt-2">
+                  Cuando un propietario te asigne un servicio, aparecerá aquí.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {Array.from(
+                  new Set(
+                    serviciosReales.map(
+                      (s) => s.idNegocio ?? `sin-negocio-${s.idServicio}`,
+                    ),
+                  ),
+                ).map((negocioId) => {
+                  const servicios = serviciosReales.filter(
+                    (s) =>
+                      (s.idNegocio ?? `sin-negocio-${s.idServicio}`) ===
+                      negocioId,
+                  );
+                  return (
+                    <section
+                      key={String(negocioId)}
+                      className="superficie-app rounded-2xl p-6 shadow-sm md:p-8"
+                    >
+                      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold">
+                          <Store size={22} />
+                          {servicios[0].nombreNegocio || "Negocio sin nombre"}
+                        </h2>
+                        <span className="texto-secundario text-sm">
+                          {servicios.length} servicio(s) asignado(s)
+                        </span>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {servicios.map((servicio) => (
+                          <article
+                            key={servicio.idServicio}
+                            className="superficie-app rounded-xl border p-5"
+                          >
+                            <h3 className="mb-2 text-lg font-semibold">
+                              {servicio.nombre}
+                            </h3>
+                            <p className="texto-secundario mb-4 text-sm">
+                              {servicio.descripcion}
+                            </p>
+                            <p className="texto-secundario flex items-center gap-2 text-sm">
+                              <Clock3 size={17} />
+                              {servicio.duracionMinutos} minutos
+                            </p>
+                            <p className="texto-secundario mt-2 text-sm">
+                              <strong>Precio:</strong> $
+                              {servicio.precio.toLocaleString("es-CO")}
+                            </p>
+                            <p className="mt-4 font-semibold text-green-600">
+                              Asignado a mí
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+            <Link
+              to="/proveedor/horario"
+              className="boton-app inline-flex items-center gap-2"
+            >
+              <CalendarClock size={18} /> Consultar mi horario
+            </Link>
           </div>
         ) : (
           <>
             <div className="superficie-app mb-6 rounded-2xl p-6 shadow-sm">
-              <label htmlFor="proveedor-demo" className="mb-2 flex items-center gap-2 font-semibold">
+              <label
+                htmlFor="proveedor-demo"
+                className="mb-2 flex items-center gap-2 font-semibold"
+              >
                 <UserRound size={19} /> Proveedor de demostración
               </label>
               <div className="flex flex-wrap items-center gap-3">
-                <select id="proveedor-demo" className="campo-app flex-1" value={proveedorId} onChange={(e) => cambiarProveedor(Number(e.target.value))}>
+                <select
+                  id="proveedor-demo"
+                  className="campo-app flex-1"
+                  value={proveedorId}
+                  onChange={(e) => cambiarProveedor(Number(e.target.value))}
+                >
                   {proveedoresDemo.map((p) => (
-                    <option key={p.idProveedor} value={p.idProveedor}>{p.nombre} {p.apellido} — {p.especialidad}</option>
+                    <option key={p.idProveedor} value={p.idProveedor}>
+                      {p.nombre} {p.apellido} — {p.especialidad}
+                    </option>
                   ))}
                 </select>
-                <button type="button" className="campo-app !w-auto flex items-center gap-2" onClick={cargar}>
+                <button
+                  type="button"
+                  className="campo-app !w-auto flex items-center gap-2"
+                  onClick={cargar}
+                >
                   <RefreshCw size={17} /> Actualizar
                 </button>
               </div>
-              <p className="texto-secundario mt-3 text-sm">Este selector existe solo para probar distintos proveedores. En producción, el proveedor se identifica por su sesión autenticada.</p>
+              <p className="texto-secundario mt-3 text-sm">
+                Este selector existe solo para probar distintos proveedores. En
+                producción, el proveedor se identifica por su sesión
+                autenticada.
+              </p>
             </div>
 
             {grupos.length === 0 ? (
               <div className="superficie-app rounded-2xl p-10 text-center shadow-sm">
-                <BriefcaseBusiness size={40} className="titulo-app mx-auto mb-4" />
-                <h2 className="text-xl font-semibold">Todavía no tienes servicios asignados</h2>
-                <p className="texto-secundario mt-2">Cuando un propietario te asigne un servicio, aparecerá aquí junto con su negocio.</p>
+                <BriefcaseBusiness
+                  size={40}
+                  className="titulo-app mx-auto mb-4"
+                />
+                <h2 className="text-xl font-semibold">
+                  Todavía no tienes servicios asignados
+                </h2>
+                <p className="texto-secundario mt-2">
+                  Cuando un propietario te asigne un servicio, aparecerá aquí
+                  junto con su negocio.
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {grupos.map(({ negocio, servicios }) => (
-                  <section key={negocio.idNegocio} className="superficie-app rounded-2xl p-6 shadow-sm md:p-8">
+                  <section
+                    key={negocio.idNegocio}
+                    className="superficie-app rounded-2xl p-6 shadow-sm md:p-8"
+                  >
                     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                      <h2 className="flex items-center gap-2 text-xl font-semibold"><Store size={22} />{negocio.nombreNegocio}</h2>
-                      <span className="texto-secundario text-sm">{servicios.length} servicio(s) asignado(s)</span>
+                      <h2 className="flex items-center gap-2 text-xl font-semibold">
+                        <Store size={22} />
+                        {negocio.nombreNegocio}
+                      </h2>
+                      <span className="texto-secundario text-sm">
+                        {servicios.length} servicio(s) asignado(s)
+                      </span>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       {servicios.map((servicio) => (
-                        <article key={servicio.idServicio} className="superficie-app rounded-xl border p-5">
-                          <h3 className="mb-2 text-lg font-semibold">{servicio.nombre}</h3>
-                          <p className="texto-secundario mb-4 text-sm">{servicio.descripcion}</p>
-                          <p className="texto-secundario flex items-center gap-2 text-sm"><Clock3 size={17} />{servicio.duracionMinutos} minutos</p>
-                          <p className="texto-secundario mt-2 text-sm"><strong>Precio:</strong> ${servicio.precio.toLocaleString("es-CO")}</p>
-                          <p className="mt-4 font-semibold text-green-600">Asignado a mí</p>
+                        <article
+                          key={servicio.idServicio}
+                          className="superficie-app rounded-xl border p-5"
+                        >
+                          <h3 className="mb-2 text-lg font-semibold">
+                            {servicio.nombre}
+                          </h3>
+                          <p className="texto-secundario mb-4 text-sm">
+                            {servicio.descripcion}
+                          </p>
+                          <p className="texto-secundario flex items-center gap-2 text-sm">
+                            <Clock3 size={17} />
+                            {servicio.duracionMinutos} minutos
+                          </p>
+                          <p className="texto-secundario mt-2 text-sm">
+                            <strong>Precio:</strong> $
+                            {servicio.precio.toLocaleString("es-CO")}
+                          </p>
+                          <p className="mt-4 font-semibold text-green-600">
+                            Asignado a mí
+                          </p>
                         </article>
                       ))}
                     </div>
@@ -112,20 +334,26 @@ export default function MisServiciosProveedor() {
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="flex items-center gap-2 text-xl font-semibold">
-                    <CalendarClock size={23} className="titulo-app" /> Mi horario semanal
+                    <CalendarClock size={23} className="titulo-app" /> Mi
+                    horario semanal
                   </h2>
                   <p className="texto-secundario mt-2 text-sm">
                     Disponibilidad guardada para el proveedor seleccionado.
                   </p>
                 </div>
-                <Link to="/proveedor/horario" className="boton-app inline-flex items-center gap-2">
+                <Link
+                  to="/proveedor/horario"
+                  className="boton-app inline-flex items-center gap-2"
+                >
                   <Pencil size={17} /> Editar horario
                 </Link>
               </div>
 
               {!horario ? (
                 <div className="rounded-xl border p-5">
-                  <p className="font-medium">Aún no hay un horario semanal guardado.</p>
+                  <p className="font-medium">
+                    Aún no hay un horario semanal guardado.
+                  </p>
                   <p className="texto-secundario mt-2 text-sm">
                     Configura y guarda tu horario desde la opción Mi horario.
                   </p>
@@ -135,25 +363,36 @@ export default function MisServiciosProveedor() {
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th scope="col" className="px-4 py-3 font-semibold">Día</th>
-                        <th scope="col" className="px-4 py-3 font-semibold">Horario de atención</th>
+                        <th scope="col" className="px-4 py-3 font-semibold">
+                          Día
+                        </th>
+                        <th scope="col" className="px-4 py-3 font-semibold">
+                          Horario de atención
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {horario.map((dia) => (
                         <tr key={dia.dia} className="border-b last:border-b-0">
-                          <th scope="row" className="px-4 py-3 font-medium">{dia.dia}</th>
+                          <th scope="row" className="px-4 py-3 font-medium">
+                            {dia.dia}
+                          </th>
                           <td className="px-4 py-3">
                             {dia.activo && dia.bloques.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {dia.bloques.map((bloque, i) => (
-                                  <span key={`${dia.dia}-${i}`} className="rounded-lg border px-3 py-1">
+                                  <span
+                                    key={`${dia.dia}-${i}`}
+                                    className="rounded-lg border px-3 py-1"
+                                  >
                                     {bloque.inicio} – {bloque.fin}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="texto-secundario">Sin atención</span>
+                              <span className="texto-secundario">
+                                Sin atención
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -163,7 +402,8 @@ export default function MisServiciosProveedor() {
                 </div>
               )}
               <p className="texto-secundario mt-4 text-xs">
-                Horario de demostración individual del proveedor seleccionado. No corresponde aún a datos del backend.
+                Horario de demostración individual del proveedor seleccionado.
+                No corresponde aún a datos del backend.
               </p>
             </section>
           </>

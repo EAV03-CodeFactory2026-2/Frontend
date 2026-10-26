@@ -15,10 +15,16 @@ import {
   type Negocio,
   type Servicio,
   type Modalidad,
+  type ProveedorAsignado,
 } from "../services/api";
 import { obtenerSesion } from "../services/auth";
 import { negociosDemo, modalidadesDemo } from "../mocks/demo";
-import { obtenerServiciosDemo, guardarServicioDemo, obtenerAsignacionesDemo, proveedoresDemo } from "../mocks/asignacionesDemo";
+import {
+  obtenerServiciosDemo,
+  guardarServicioDemo,
+  obtenerAsignacionesDemo,
+  proveedoresDemo,
+} from "../mocks/asignacionesDemo";
 
 const MODO_DEMO = import.meta.env.VITE_MODO_DEMO === "true";
 console.log("¿Modo demostración activo?", MODO_DEMO);
@@ -27,8 +33,20 @@ console.log("Valor del archivo .env.local:", import.meta.env.VITE_MODO_DEMO);
 export default function Servicios() {
   const [negocios, setNegocios] = useState<Negocio[]>([]);
   const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [asignaciones, setAsignaciones] = useState<Record<string, number[]>>({});
+  const [asignaciones, setAsignaciones] = useState<Record<string, number[]>>(
+    {},
+  );
   const [modalidades, setModalidades] = useState<Modalidad[]>([]);
+  const [servicioExpandido, setServicioExpandido] = useState<number | null>(
+    null,
+  );
+  const [proveedoresPorServicio, setProveedoresPorServicio] = useState<
+    Record<number, ProveedorAsignado[]>
+  >({});
+  const [consultandoProveedor, setConsultandoProveedor] = useState<
+    number | null
+  >(null);
+  const [errorProveedor, setErrorProveedor] = useState("");
 
   const [negocioId, setNegocioId] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -112,6 +130,9 @@ export default function Servicios() {
     let activo = true;
 
     setServicios([]);
+    setServicioExpandido(null);
+    setProveedoresPorServicio({});
+    setErrorProveedor("");
     setErrorServicios("");
 
     if (!negocioId || !token) {
@@ -249,7 +270,11 @@ export default function Servicios() {
 
     try {
       if (MODO_DEMO) {
-        setServicios(obtenerServiciosDemo().filter((s) => s.negocioId === Number(negocioId)));
+        setServicios(
+          obtenerServiciosDemo().filter(
+            (s) => s.negocioId === Number(negocioId),
+          ),
+        );
         setAsignaciones(obtenerAsignacionesDemo());
         return;
       }
@@ -268,6 +293,43 @@ export default function Servicios() {
       );
     } finally {
       setCargandoServicios(false);
+    }
+  }
+
+  async function alternarProveedores(servicioId: number) {
+    if (servicioExpandido === servicioId) {
+      setServicioExpandido(null);
+      return;
+    }
+
+    setServicioExpandido(servicioId);
+    setErrorProveedor("");
+
+    if (MODO_DEMO) return;
+
+    if (!token) {
+      setErrorProveedor("Debes iniciar sesión para consultar los proveedores.");
+      return;
+    }
+
+    setConsultandoProveedor(servicioId);
+    try {
+      const respuesta = await api.proveedoresAsignados(servicioId, token);
+      if (!Array.isArray(respuesta)) {
+        throw new Error("Formato de proveedores asignados inesperado.");
+      }
+      setProveedoresPorServicio((anterior) => ({
+        ...anterior,
+        [servicioId]: respuesta,
+      }));
+    } catch (e) {
+      setErrorProveedor(
+        e instanceof Error
+          ? e.message
+          : "No se pudieron consultar los proveedores.",
+      );
+    } finally {
+      setConsultandoProveedor(null);
     }
   }
 
@@ -351,7 +413,9 @@ export default function Servicios() {
       guardarServicioDemo(nuevoServicio);
 
       setServicios(
-        obtenerServiciosDemo().filter((servicio) => servicio.negocioId === idNegocio),
+        obtenerServiciosDemo().filter(
+          (servicio) => servicio.negocioId === idNegocio,
+        ),
       );
 
       limpiarFormulario();
@@ -560,13 +624,24 @@ export default function Servicios() {
                   (m) => m.idModalidad === servicio.modalidadId,
                 );
 
-                const idsAsignados = servicio.idServicio != null
-                  ? asignaciones[String(servicio.idServicio)] ?? []
-                  : [];
+                const idsAsignados =
+                  servicio.idServicio != null
+                    ? (asignaciones[String(servicio.idServicio)] ?? [])
+                    : [];
                 const nombresAsignados = idsAsignados.map((id) => {
-                  const p = proveedoresDemo.find((proveedor) => proveedor.idProveedor === id);
+                  const p = proveedoresDemo.find(
+                    (proveedor) => proveedor.idProveedor === id,
+                  );
                   return p ? `${p.nombre} ${p.apellido}` : `Proveedor #${id}`;
                 });
+
+                const proveedoresReales =
+                  servicio.idServicio != null
+                    ? (proveedoresPorServicio[servicio.idServicio] ?? [])
+                    : [];
+                const expandido =
+                  servicio.idServicio != null &&
+                  servicioExpandido === servicio.idServicio;
 
                 return (
                   <article
@@ -598,25 +673,73 @@ export default function Servicios() {
                           `ID ${servicio.modalidadId}`}
                       </p>
                     </div>
-                    {MODO_DEMO && (
+                    {servicio.idServicio != null && (
                       <div className="mt-5 border-t pt-4">
-                        {idsAsignados.length > 0 ? (
-                          <>
-                            <p className="flex items-center gap-2 font-semibold text-green-600">
-                              <CheckCircle2 size={19} /> Asignado
-                            </p>
-                            <p className="texto-secundario mt-2 text-sm">
-                              {idsAsignados.length} proveedor(es) asignado(s)
-                            </p>
-                            {nombresAsignados.map((nombre, i) => (
-                              <p key={`${nombre}-${i}`} className="mt-1 text-sm">{nombre}</p>
-                            ))}
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-semibold">No asignado</p>
-                            <p className="texto-secundario mt-2 text-sm">Sin proveedores vinculados.</p>
-                          </>
+                        <button
+                          type="button"
+                          className="campo-app !w-auto flex items-center gap-2 disabled:opacity-60"
+                          onClick={() =>
+                            void alternarProveedores(servicio.idServicio!)
+                          }
+                          disabled={consultandoProveedor !== null}
+                          aria-expanded={expandido}
+                        >
+                          {expandido
+                            ? "Ocultar proveedores"
+                            : "Ver proveedores asignados"}
+                        </button>
+
+                        {expandido && (
+                          <div
+                            className="mt-4 space-y-2 text-sm"
+                            aria-live="polite"
+                          >
+                            {consultandoProveedor === servicio.idServicio ? (
+                              <p className="texto-secundario">
+                                Consultando proveedores...
+                              </p>
+                            ) : errorProveedor && !MODO_DEMO ? (
+                              <p role="alert" className="text-red-500">
+                                {errorProveedor}
+                              </p>
+                            ) : MODO_DEMO ? (
+                              nombresAsignados.length > 0 ? (
+                                <ul className="list-inside list-disc">
+                                  {nombresAsignados.map((n, i) => (
+                                    <li key={`${n}-${i}`}>{n}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="texto-secundario">
+                                  Este servicio aún no tiene proveedores
+                                  asignados.
+                                </p>
+                              )
+                            ) : proveedoresReales.length > 0 ? (
+                              <ul className="space-y-2">
+                                {proveedoresReales.map((proveedor) => (
+                                  <li
+                                    key={proveedor.idUsuario}
+                                    className="rounded-lg border p-3"
+                                  >
+                                    <p className="font-medium">
+                                      {proveedor.nombre} {proveedor.apellido}
+                                    </p>
+                                    {proveedor.especialidad && (
+                                      <p className="texto-secundario">
+                                        {proveedor.especialidad}
+                                      </p>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="texto-secundario">
+                                Este servicio aún no tiene proveedores
+                                asignados.
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
