@@ -1,8 +1,4 @@
-
-import {
-  BriefcaseBusiness,
-  CalendarDays,
-} from "lucide-react";
+import { BriefcaseBusiness, CalendarDays } from "lucide-react";
 import PanelRol from "../../components/PanelRol";
 
 export default function DashboardProveedor() {
@@ -18,9 +14,10 @@ export default function DashboardProveedor() {
           icono: BriefcaseBusiness,
         },
         {
-          titulo: "Reservas",
-          descripcion: "Consulta las reservas correspondientes.",
-          ruta: "/reservas",
+          titulo: "Mi agenda",
+          descripcion:
+            "Revisa por fecha tus citas confirmadas y los datos de atención.",
+          ruta: "/proveedor/agenda",
           icono: CalendarDays,
         },
       ]}

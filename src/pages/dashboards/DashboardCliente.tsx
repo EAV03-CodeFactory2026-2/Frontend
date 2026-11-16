@@ -1,9 +1,4 @@
-
-import {
-  Search,
-  CalendarDays,
-  UserRound,
-} from "lucide-react";
+import { Search, CalendarDays, UserRound } from "lucide-react";
 
 import PanelRol from "../../components/PanelRol";
 
@@ -21,16 +16,15 @@ export default function DashboardCliente() {
           icono: Search,
         },
         {
-          titulo: "Mi perfil",
-          descripcion:
-            "Consulta la información asociada a tu cuenta.",
-          ruta: "/cliente/perfil",
+          titulo: "Mi cuenta",
+          descripcion: "Consulta la información asociada a tu cuenta.",
+          ruta: "/mi-cuenta",
           icono: UserRound,
         },
         {
           titulo: "Mis reservas",
           descripcion:
-            "Próximamente podrás consultar tus reservas y su estado.",
+            "Consulta tus próximas citas, revisa detalles y cancelaciones.",
           ruta: "/reservas",
           icono: CalendarDays,
         },

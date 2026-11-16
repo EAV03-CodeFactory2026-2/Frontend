@@ -5,6 +5,7 @@ import {
   type Negocio,
   type Servicio,
   type ProveedorDirectorio,
+  type ProveedorAsignado,
 } from "../services/api";
 import { obtenerSesion } from "../services/auth";
 import { negociosDemo } from "../mocks/demo";
@@ -26,6 +27,11 @@ export default function AsignacionProveedores() {
   const [resultados, setResultados] = useState<ProveedorDirectorio[]>([]);
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
   const [asignados, setAsignados] = useState<number[]>([]);
+  const [asignadosDetalle, setAsignadosDetalle] = useState<ProveedorAsignado[]>(
+    [],
+  );
+  const [consultandoAsignados, setConsultandoAsignados] = useState(false);
+  const [errorAsignados, setErrorAsignados] = useState("");
   const [cargando, setCargando] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(0);
@@ -61,6 +67,8 @@ export default function AsignacionProveedores() {
     setServicios([]);
     setSeleccionados([]);
     setAsignados([]);
+    setAsignadosDetalle([]);
+    setErrorAsignados("");
     setResultados([]);
     setPagina(1);
     setTotalPaginas(0);
@@ -100,17 +108,38 @@ export default function AsignacionProveedores() {
     setTotalResultados(0);
     setMensaje("");
     setError("");
-    if (!servicioId) {
-      setAsignados([]);
-      return;
-    }
+    setAsignados([]);
+    setAsignadosDetalle([]);
+    setErrorAsignados("");
+    if (!servicioId) return;
     if (MODO_DEMO) {
       setAsignados(obtenerAsignacionesDemo()[servicioId] ?? []);
-    } else {
-      // En producción el listado de asignados debe obtenerse del detalle del servicio.
-      setAsignados([]);
+      return;
     }
-  }, [servicioId]);
+    let vigente = true;
+    setConsultandoAsignados(true);
+    void api
+      .proveedoresAsignados(Number(servicioId), token)
+      .then((lista) => {
+        if (!vigente) return;
+        setAsignadosDetalle(lista);
+        setAsignados(lista.map((proveedor) => proveedor.idUsuario));
+      })
+      .catch((e: unknown) => {
+        if (vigente)
+          setErrorAsignados(
+            e instanceof Error
+              ? e.message
+              : "No se pudieron consultar las asignaciones.",
+          );
+      })
+      .finally(() => {
+        if (vigente) setConsultandoAsignados(false);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [servicioId, token]);
 
   async function buscar(numeroPagina = 1) {
     setError("");
@@ -196,7 +225,9 @@ export default function AsignacionProveedores() {
         setAsignados(actualizados);
       } else {
         await api.asignarProveedores(Number(servicioId), nuevos, token);
-        setAsignados((actual) => [...actual, ...nuevos]);
+        const lista = await api.proveedoresAsignados(Number(servicioId), token);
+        setAsignadosDetalle(lista);
+        setAsignados(lista.map((proveedor) => proveedor.idUsuario));
       }
       setSeleccionados([]);
       setMensaje(`Servicio asignado a ${nuevos.length} proveedor(es).`);
@@ -312,7 +343,7 @@ export default function AsignacionProveedores() {
             <div className="mt-6 rounded-xl border border-slate-300 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-semibold">
-                  Estado del servicio: {servicioSeleccionado?.nombre}
+                  Proveedores del servicio: {servicioSeleccionado?.nombre}
                 </h3>
                 <span
                   className={
@@ -321,13 +352,25 @@ export default function AsignacionProveedores() {
                       : "texto-secundario font-semibold"
                   }
                 >
-                  {asignados.length > 0
-                    ? "✓ Asignado"
-                    : MODO_DEMO
-                      ? "No asignado"
-                      : "Estado por verificar"}
+                  {consultandoAsignados
+                    ? "Consultando asignaciones…"
+                    : errorAsignados
+                      ? "No se pudo verificar"
+                      : asignados.length > 0
+                        ? `${asignados.length} proveedor(es) asignado(s)`
+                        : "Sin proveedores asignados"}
                 </span>
               </div>
+              {errorAsignados && (
+                <p role="alert" className="mt-3 text-sm text-red-500">
+                  No se pudieron verificar los proveedores actuales:{" "}
+                  {errorAsignados}
+                </p>
+              )}
+              <p className="texto-secundario mt-2 text-sm">
+                Aquí puedes comprobar quiénes ya prestan este servicio antes de
+                asignar más proveedores.
+              </p>
               {asignados.length > 0 ? (
                 <div className="mt-5">
                   <h4 className="mb-3 font-semibold">
@@ -335,9 +378,13 @@ export default function AsignacionProveedores() {
                   </h4>
                   <div className="space-y-3">
                     {asignados.map((id) => {
-                      const p = proveedoresVisibles.find(
-                        (proveedor) => proveedor.idUsuario === id,
-                      );
+                      const p =
+                        asignadosDetalle.find(
+                          (proveedor) => proveedor.idUsuario === id,
+                        ) ??
+                        proveedoresVisibles.find(
+                          (proveedor) => proveedor.idUsuario === id,
+                        );
                       return (
                         <div
                           key={id}
@@ -375,9 +422,11 @@ export default function AsignacionProveedores() {
                 </div>
               ) : (
                 <p className="texto-secundario mt-3 text-sm">
-                  {MODO_DEMO
-                    ? "Este servicio todavía no tiene proveedores asignados."
-                    : "Consulta el detalle del servicio en Business para confirmar sus asignaciones actuales."}
+                  {consultandoAsignados
+                    ? "Consultando proveedores asignados…"
+                    : errorAsignados
+                      ? "No se pueden confirmar las asignaciones hasta que la consulta funcione."
+                      : "Este servicio todavía no tiene proveedores asignados."}
                 </p>
               )}
             </div>
