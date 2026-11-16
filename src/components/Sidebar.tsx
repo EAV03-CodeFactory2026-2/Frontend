@@ -78,6 +78,16 @@ const menus = {
       icono: Boxes,
     },
     {
+      nombre: "Recursos por servicio",
+      ruta: "/propietario/recursos-servicio",
+      icono: Boxes,
+    },
+    {
+      nombre: "Franjas de servicios",
+      ruta: "/propietario/franjas",
+      icono: CalendarClock,
+    },
+    {
       nombre: "Asignar proveedores",
       ruta: "/asignacion-proveedores",
       icono: UsersRound,
@@ -100,10 +110,11 @@ const menus = {
       ruta: "/proveedor/horario",
       icono: CalendarClock,
     },
+    { nombre: "Mi agenda", ruta: "/proveedor/agenda", icono: CalendarDays },
     {
-      nombre: "Reservas",
-      ruta: "/reservas",
-      icono: CalendarDays,
+      nombre: "Franjas de servicios",
+      ruta: "/proveedor/franjas",
+      icono: CalendarClock,
     },
   ],
 };

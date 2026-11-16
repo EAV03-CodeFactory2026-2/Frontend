@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, type Negocio, type Servicio } from "../services/api";
 import { obtenerSesion } from "../services/auth";
 
@@ -192,8 +193,8 @@ export default function ExplorarServiciosCliente() {
           <Info size={20} className="texto-secundario mt-0.5 shrink-0" />
 
           <p className="texto-secundario text-sm">
-            Consulta de negocios y servicios disponibles. Las reservas en línea
-            se implementarán en una próxima etapa.
+            Consulta de negocios y servicios disponibles. Selecciona un servicio
+            para consultar sus franjas disponibles y reservar.
           </p>
         </div>
 
@@ -276,9 +277,19 @@ export default function ExplorarServiciosCliente() {
                 </div>
 
                 <div className="mt-6 border-t pt-4">
-                  <p className="texto-secundario text-sm">
-                    Reserva en línea: próximamente.
-                  </p>
+                  {servicio.idServicio != null ? (
+                    <Link
+                      className="inline-block rounded-xl bg-emerald-700 px-5 py-2 font-semibold text-white"
+                      to={`/cliente/reservar/${servicio.idServicio}`}
+                      state={{ servicio, negocio }}
+                    >
+                      Ver horarios y reservar
+                    </Link>
+                  ) : (
+                    <p className="texto-secundario text-sm">
+                      Servicio no disponible para reservar.
+                    </p>
+                  )}
                 </div>
               </article>
             ))}

@@ -25,6 +25,10 @@ import HorarioProveedor from "./pages/HorarioProveedor";
 import MisServiciosProveedor from "./pages/MisServiciosProveedor";
 import ExplorarServiciosCliente from "./pages/ExplorarServiciosCliente";
 import PerfilCliente from "./pages/PerfilCliente";
+import ReservarServicio from "./pages/ReservarServicio";
+import AgendaProveedor from "./pages/AgendaProveedor";
+import FranjasServicio from "./pages/FranjasServicio";
+import RecursosServicio from "./pages/RecursosServicio";
 
 // Nueva pantalla para consultar y agregar roles
 import MiCuenta from "./pages/MiCuenta";
@@ -110,6 +114,10 @@ export default function App() {
               />
 
               <Route path="/cliente/perfil" element={<PerfilCliente />} />
+              <Route
+                path="/cliente/reservar/:servicioId"
+                element={<ReservarServicio />}
+              />
             </Route>
 
             {/* PROPIETARIO */}
@@ -128,6 +136,14 @@ export default function App() {
               />
 
               <Route path="/servicios" element={<Servicios />} />
+              <Route
+                path="/propietario/franjas"
+                element={<FranjasServicio />}
+              />
+              <Route
+                path="/propietario/recursos-servicio"
+                element={<RecursosServicio />}
+              />
             </Route>
 
             {/* PROVEEDOR */}
@@ -135,6 +151,8 @@ export default function App() {
               <Route path="/proveedor" element={<Proveedor />} />
 
               <Route path="/proveedor/horario" element={<HorarioProveedor />} />
+              <Route path="/proveedor/agenda" element={<AgendaProveedor />} />
+              <Route path="/proveedor/franjas" element={<FranjasServicio />} />
 
               <Route
                 path="/proveedor/servicios"
@@ -142,12 +160,8 @@ export default function App() {
               />
             </Route>
 
-            {/* RESERVAS: CLIENTE Y PROVEEDOR */}
-            <Route
-              element={
-                <RutaProtegida rolesPermitidos={["Cliente", "Proveedor"]} />
-              }
-            >
+            {/* RESERVAS: SOLO CLIENTE */}
+            <Route element={<RutaProtegida rolesPermitidos={["Cliente"]} />}>
               <Route path="/reservas" element={<Reservas />} />
             </Route>
 

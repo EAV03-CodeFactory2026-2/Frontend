@@ -146,7 +146,196 @@ export type AgregarRolPayload = {
   descripcionProfesional?: string;
 };
 
+export type FranjaDisponible = {
+  idFranja: number;
+  servicioId: number;
+  nombreServicio: string;
+  proveedorId: number;
+  nombreProveedor: string;
+  fecha: string;
+  diaSemana: string;
+  horaInicio: string;
+  horaFin: string;
+  duracionMinutos: number;
+  precio: number;
+  moneda: string;
+};
+export type ReservaResumen = {
+  idReserva: number;
+  codigoReserva: string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  nombreServicio: string;
+  nombreNegocio: string;
+  estado: string;
+};
+export type ReservaDetalle = ReservaResumen & {
+  mensaje?: string;
+  nombreProveedor: string;
+  nombreCliente: string;
+  duracionMinutos: number;
+  precio: number;
+  moneda: string;
+  notas?: string;
+  fechaCreacion: string;
+  fechaCancelacion?: string;
+  motivoCancelacion?: string;
+  resumen?: string;
+};
+export type MisReservas = {
+  mensaje: string;
+  proximas: ReservaResumen[];
+  historial: ReservaResumen[];
+};
+export type Agenda = {
+  fecha: string;
+  totalReservas: number;
+  mensaje: string;
+  reservas: {
+    idReserva: number;
+    codigoReserva: string;
+    horaInicio: string;
+    horaFin: string;
+    nombreServicio: string;
+    nombreNegocio: string;
+    nombreCliente: string;
+    telefonoCliente: string;
+    notas: string;
+  }[];
+};
+export type FranjaDefinida = {
+  idFranja: number;
+  servicioId: number;
+  nombreServicio: string;
+  duracionMinutos: number;
+  proveedorId: number;
+  nombreProveedor: string;
+  diaSemana: string;
+  horaInicio: string;
+  horaFin: string;
+  nombreCreadaPor: string;
+  fechaCreacion: string;
+  mensaje?: string;
+};
+export type RecursoRequerido = {
+  idRecurso: number;
+  nombreRecurso: string;
+  cantidadRequerida: number;
+};
+
 export const api = {
+  franjasDisponibles: (servicioId: number, fecha: string, token: string) =>
+    solicitudApi<FranjaDisponible[]>(
+      "BUSINESS",
+      `/api/v1/servicios/${servicioId}/franjas-disponibles?fecha=${encodeURIComponent(fecha)}`,
+      {},
+      token,
+    ),
+  reservar: (
+    payload: {
+      franjaId: number;
+      servicioId: number;
+      proveedorId: number;
+      fecha: string;
+      horaInicio: string;
+      notas: string;
+    },
+    token: string,
+  ) =>
+    solicitudApi<ReservaDetalle>(
+      "BUSINESS",
+      "/api/v1/reservas",
+      { method: "POST", body: JSON.stringify(payload) },
+      token,
+    ),
+  misReservas: (token: string) =>
+    solicitudApi<MisReservas>(
+      "BUSINESS",
+      "/api/v1/reservas/mis-reservas",
+      {},
+      token,
+    ),
+  detalleReserva: (id: number, token: string) =>
+    solicitudApi<ReservaDetalle>(
+      "BUSINESS",
+      `/api/v1/reservas/mis-reservas/${id}`,
+      {},
+      token,
+    ),
+  cancelarReserva: (id: number, motivo: string, token: string) =>
+    solicitudApi<ReservaDetalle>(
+      "BUSINESS",
+      `/api/v1/reservas/${id}/cancelar`,
+      { method: "POST", body: JSON.stringify({ motivo, confirmacion: true }) },
+      token,
+    ),
+  miAgenda: (fecha: string, token: string) =>
+    solicitudApi<Agenda>(
+      "BUSINESS",
+      `/api/v1/reservas/mi-agenda?fecha=${encodeURIComponent(fecha)}`,
+      {},
+      token,
+    ),
+  consultarFranjas: (servicioId: number, token: string, proveedorId?: number) =>
+    solicitudApi<FranjaDefinida[]>(
+      "MASTERS",
+      `/api/v1/servicios/${servicioId}/franjas${proveedorId ? `?proveedorId=${proveedorId}` : ""}`,
+      {},
+      token,
+    ),
+  crearFranja: (
+    payload: {
+      servicioId: number;
+      proveedorId?: number;
+      diaSemana: string;
+      horaInicio: string;
+    },
+    token: string,
+  ) =>
+    solicitudApi<FranjaDefinida>(
+      "MASTERS",
+      "/api/v1/franjas",
+      { method: "POST", body: JSON.stringify(payload) },
+      token,
+    ),
+  eliminarFranja: (servicioId: number, franjaId: number, token: string) =>
+    solicitudApi<void>(
+      "MASTERS",
+      `/api/v1/servicios/${servicioId}/franjas/${franjaId}`,
+      { method: "DELETE" },
+      token,
+    ),
+  recursosDeServicio: (servicioId: number, token: string) =>
+    solicitudApi<RecursoRequerido[]>(
+      "BUSINESS",
+      `/api/v1/servicios/${servicioId}/recursos`,
+      {},
+      token,
+    ),
+  asociarRecurso: (
+    servicioId: number,
+    recursoId: number,
+    cantidadRequerida: number,
+    token: string,
+  ) =>
+    solicitudApi<unknown>(
+      "BUSINESS",
+      `/api/v1/servicios/${servicioId}/recursos`,
+      {
+        method: "POST",
+        body: JSON.stringify({ recursoId, cantidadRequerida }),
+      },
+      token,
+    ),
+  quitarRecurso: (servicioId: number, recursoId: number, token: string) =>
+    solicitudApi<void>(
+      "BUSINESS",
+      `/api/v1/servicios/${servicioId}/recursos/${recursoId}`,
+      { method: "DELETE" },
+      token,
+    ),
+
   // WEB AUTH - Autenticación
   login: (correo: string, contrasena: string) =>
     solicitudApi<{ token: string; mensaje: string }>(
